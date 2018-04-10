@@ -1,7 +1,7 @@
-use combine::*;
 use combine::combinator::recognize;
 use combine::parser::char::*;
 use combine::stream::state::State;
+use combine::*;
 
 pub type Error<'a> = easy::Errors<char, &'a str, stream::state::SourcePosition>;
 
@@ -14,7 +14,10 @@ pub enum Expr {
 }
 impl Expr {
     pub fn parse(s: &str) -> Result<Self, Error> {
-        expr().skip(eof()).easy_parse(State::new(s)).map(|res| res.0)
+        expr()
+            .skip(eof())
+            .easy_parse(State::new(s))
+            .map(|res| res.0)
     }
     fn and<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::And(Box::new(lhs.into()), Box::new(rhs.into()))
@@ -31,7 +34,7 @@ impl Expr {
 pub enum Pred {
     All,
     None,
-    Fun(Fun)
+    Fun(Fun),
 }
 impl From<Pred> for Expr {
     fn from(other: Pred) -> Self {
@@ -171,9 +174,18 @@ mod test {
     #[test]
     fn test_quoted_str() {
         assert_eq!(quoted_str().easy_parse(r#""""#), Ok(("".to_string(), "")));
-        assert_eq!(quoted_str().easy_parse(r#"  "foo"  "#), Ok(("foo".to_string(), "")));
-        assert_eq!(quoted_str().easy_parse(r#"  "\""   "#), Ok(("\"".to_string(), "")));
-        assert_eq!(quoted_str().easy_parse(r#"  "\\"   "#), Ok(("\\".to_string(), "")));
+        assert_eq!(
+            quoted_str().easy_parse(r#"  "foo"  "#),
+            Ok(("foo".to_string(), ""))
+        );
+        assert_eq!(
+            quoted_str().easy_parse(r#"  "\""   "#),
+            Ok(("\"".to_string(), ""))
+        );
+        assert_eq!(
+            quoted_str().easy_parse(r#"  "\\"   "#),
+            Ok(("\\".to_string(), ""))
+        );
         assert!(quoted_str().easy_parse(r#""\a""#).is_err());
         assert!(quoted_str().easy_parse(r#"""#).is_err());
         assert!(quoted_str().easy_parse(r#" "#).is_err());
@@ -183,7 +195,10 @@ mod test {
     #[test]
     fn test_ident() {
         assert_eq!(ident().easy_parse(" foo "), Ok(("foo".to_string(), "")));
-        assert_eq!(ident().easy_parse(" stop_area "), Ok(("stop_area".to_string(), "")));
+        assert_eq!(
+            ident().easy_parse(" stop_area "),
+            Ok(("stop_area".to_string(), ""))
+        );
         assert_eq!(ident().easy_parse(" e1337 "), Ok(("e1337".to_string(), "")));
         assert!(ident().easy_parse("").is_err());
         assert!(ident().easy_parse("1").is_err());
@@ -192,10 +207,16 @@ mod test {
 
     #[test]
     fn test_fun() {
-        assert_eq!(fun().easy_parse(" f . a ( ) "), Ok((Fun::new("f", "a", &[]), "")));
+        assert_eq!(
+            fun().easy_parse(" f . a ( ) "),
+            Ok((Fun::new("f", "a", &[]), ""))
+        );
         assert_eq!(
             fun().easy_parse(r#" vehicle_journey . has_code ( external_code , "OIF:42" ) "#),
-            Ok((Fun::new("vehicle_journey", "has_code", &["external_code", "OIF:42"]), ""))
+            Ok((
+                Fun::new("vehicle_journey", "has_code", &["external_code", "OIF:42"]),
+                ""
+            ))
         );
         assert_eq!(
             fun().easy_parse(r#" stop_area . uri ( "OIF:42" ) "#),
@@ -220,7 +241,10 @@ mod test {
     #[test]
     fn test_basic_expr() {
         assert_eq!(expr().easy_parse(" all "), Ok((Expr::Pred(Pred::All), "")));
-        assert_eq!(expr().easy_parse(" none "), Ok((Expr::Pred(Pred::None), "")));
+        assert_eq!(
+            expr().easy_parse(" none "),
+            Ok((Expr::Pred(Pred::None), ""))
+        );
         assert_eq!(
             expr().easy_parse(" f . a ( ) "),
             Ok((Expr::Pred(Pred::Fun(Fun::new("f", "a", &[]))), ""))
@@ -275,20 +299,14 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all and all or none and all "),
-            Ok((
-                Expr::or(Expr::and(All, All), Expr::and(None, All)),
-                ""
-            ))
+            Ok((Expr::or(Expr::and(All, All), Expr::and(None, All)), ""))
         );
         assert_eq!(
             expr().easy_parse(" all and all or none and all or none and all "),
             Ok((
                 Expr::or(
                     Expr::and(All, All),
-                    Expr::or(
-                        Expr::and(None, All),
-                        Expr::and(None, All)
-                    )
+                    Expr::or(Expr::and(None, All), Expr::and(None, All))
                 ),
                 ""
             ))
@@ -301,10 +319,7 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all - all and none - all "),
-            Ok((
-                Expr::and(Expr::diff(All, All), Expr::diff(None, All)),
-                ""
-            ))
+            Ok((Expr::and(Expr::diff(All, All), Expr::diff(None, All)), ""))
         );
     }
 
@@ -314,10 +329,7 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all - all or none - all "),
-            Ok((
-                Expr::or(Expr::diff(All, All), Expr::diff(None, All)),
-                ""
-            ))
+            Ok((Expr::or(Expr::diff(All, All), Expr::diff(None, All)), ""))
         );
     }
 
@@ -344,23 +356,11 @@ mod test {
         assert_eq!(expr().easy_parse(" ( all ) "), Ok((All.into(), "")));
         assert_eq!(
             expr().easy_parse(" ( all and all ) - ( none and all ) "),
-            Ok((
-                Expr::diff(
-                    Expr::and(All, All),
-                    Expr::and(None, All)
-                ),
-                ""
-            ))
+            Ok((Expr::diff(Expr::and(All, All), Expr::and(None, All)), ""))
         );
         assert_eq!(
             expr().easy_parse(" ( all and all ) - ( none or all ) "),
-            Ok((
-                Expr::diff(
-                    Expr::and(All, All),
-                    Expr::or(None, All)
-                ),
-                ""
-            ))
+            Ok((Expr::diff(Expr::and(All, All), Expr::or(None, All)), ""))
         );
     }
 }
