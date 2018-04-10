@@ -14,7 +14,7 @@ pub enum Expr {
 }
 impl Expr {
     pub fn parse(s: &str) -> Result<Self, Error> {
-        expr().easy_parse(State::new(s)).map(|res| res.0)
+        expr().skip(eof()).easy_parse(State::new(s)).map(|res| res.0)
     }
     fn and<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::And(Box::new(lhs.into()), Box::new(rhs.into()))
@@ -59,7 +59,7 @@ parser!{
     fn expr_leaf[I]()(I) -> Expr where [I: Stream<Item=char>]
     {
         spaces().with(choice((
-            //between(char('('), char(')'), expr()),
+            between(char('('), char(')'), expr()),
             pred().map(Expr::Pred),
         ))).skip(spaces())
     }
@@ -97,7 +97,7 @@ parser!{
         ).map(|e| match e {
             (e, None) => e,
             (lhs, Some(rhs)) => Expr::or(lhs, rhs),
-        }).skip(eof())
+        })
     }
 }
 
@@ -341,7 +341,17 @@ mod test {
     fn test_parenthesis_expr() {
         use self::Pred::*;
 
-        assert_eq!(expr().easy_parse("(all)"), Ok((All.into(), "")));
+        assert_eq!(expr().easy_parse(" ( all ) "), Ok((All.into(), "")));
+        assert_eq!(
+            expr().easy_parse(" ( all and all ) - ( none and all ) "),
+            Ok((
+                Expr::diff(
+                    Expr::and(All, All),
+                    Expr::and(None, All)
+                ),
+                ""
+            ))
+        );
         assert_eq!(
             expr().easy_parse(" ( all and all ) - ( none or all ) "),
             Ok((
