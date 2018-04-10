@@ -19,13 +19,13 @@ impl Expr {
             .easy_parse(State::new(s))
             .map(|res| res.0)
     }
-    fn and<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
+    pub fn and<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::And(Box::new(lhs.into()), Box::new(rhs.into()))
     }
-    fn or<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
+    pub fn or<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::Or(Box::new(lhs.into()), Box::new(rhs.into()))
     }
-    fn diff<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
+    pub fn diff<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::Diff(Box::new(lhs.into()), Box::new(rhs.into()))
     }
 }
@@ -129,7 +129,7 @@ parser!{
                     char(')'),
                     spaces().with(sep_by(spaces().with(quoted_str().or(ident())), char(','))),
                 ),
-                token('=').with(quoted_str().or(ident())).map(|s| vec![s]),
+                token('=').skip(spaces()).with(quoted_str().or(ident())).map(|s| vec![s]),
             ))
         ).map(|t| Fun {
             obj: t.0,
@@ -225,6 +225,10 @@ mod test {
         assert_eq!(
             fun().easy_parse(r#" stop_area . uri = "OIF:42""#),
             Ok((Fun::new("stop_area", "uri", &["OIF:42"]), ""))
+        );
+        assert_eq!(
+            fun().easy_parse(r#" stop_area . uri = foo"#),
+            Ok((Fun::new("stop_area", "uri", &["foo"]), ""))
         );
     }
 
