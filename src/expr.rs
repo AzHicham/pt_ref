@@ -58,14 +58,17 @@ impl Fun {
     }
 }
 
-parser!{
-    fn expr_leaf[I]()(I) -> Expr where [I: Stream<Item=char>]
-    {
-        spaces().with(choice((
+fn expr_leaf<I>() -> impl Parser<Input = I, Output = Expr>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    spaces()
+        .with(choice((
             between(char('('), char(')'), expr()),
             pred().map(Expr::Pred),
-        ))).skip(spaces())
-    }
+        )))
+        .skip(spaces())
 }
 parser!{
     fn expr_diff[I]()(I) -> Expr where [I: Stream<Item=char>]
@@ -104,63 +107,72 @@ parser!{
     }
 }
 
-parser!{
-    fn pred[I]()(I) -> Pred where [I: Stream<Item=char>]
-    {
-        spaces()
-            .with(
-                string("all").map(|_| Pred::All)
-                    .or(string("none").map(|_| Pred::None))
-                    .or(fun().map(Pred::Fun))
-            )
-            .skip(spaces())
-    }
+fn pred<I>() -> impl Parser<Input = I, Output = Pred>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    spaces()
+        .with(choice((
+            string("all").map(|_| Pred::All),
+            string("none").map(|_| Pred::None),
+            fun().map(Pred::Fun),
+        )))
+        .skip(spaces())
 }
-parser!{
-    fn fun[I]()(I) -> Fun where [I: Stream<Item=char>]
-    {
-        (
-            ident(),
-            char('.'),
-            ident(),
-            choice((
-                between(
-                    char('('),
-                    char(')'),
-                    spaces().with(sep_by(spaces().with(quoted_str().or(ident())), char(','))),
-                ),
-                token('=').skip(spaces()).with(quoted_str().or(ident())).map(|s| vec![s]),
-            ))
-        ).map(|t| Fun {
+fn fun<I>() -> impl Parser<Input = I, Output = Fun>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        ident(),
+        char('.'),
+        ident(),
+        choice((
+            between(
+                char('('),
+                char(')'),
+                spaces().with(sep_by(spaces().with(str()), char(','))),
+            ),
+            token('=').skip(spaces()).with(str()).map(|s| vec![s]),
+        )),
+    ).map(|t| Fun {
             obj: t.0,
             method: t.2,
             args: t.3,
-        }).skip(spaces())
-    }
+        })
+        .skip(spaces())
+}
+fn str<I>() -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    quoted_str().or(ident())
+}
+fn ident<I>() -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    spaces()
+        .with(recognize((
+            letter(),
+            skip_many(letter().or(digit()).or(char('_'))),
+        )))
+        .skip(spaces())
 }
 parser!{
-    fn ident[I]()(I) -> String where [I: Stream<Item=char>]
-    {
-        spaces()
-            .with(
-                recognize((
-                    letter(),
-                    skip_many(letter().or(digit()).or(char('_')))
-                ))
-            )
-            .skip(spaces())
-    }
-}
-parser!{
-    fn quoted_str[I]()(I) -> String where [I: Stream<Item=char>]
+    fn quoted_str[I]()(I) -> String where [I: Stream<Item = char>]
     {
         spaces()
             .skip(char('"'))
             .with(
-                many(
-                    none_of("\\\"".chars())
-                        .or(char('\\').with(one_of("\\\"".chars())))
-                )
+                many(choice((
+                    none_of("\\\"".chars()),
+                    char('\\').with(one_of("\\\"".chars())),
+                )))
             )
             .skip(char('"'))
             .skip(spaces())
