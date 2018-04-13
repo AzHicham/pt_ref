@@ -5,12 +5,12 @@ extern crate structopt;
 extern crate failure;
 extern crate navitia_model;
 
+use navitia_model as ntm;
+use ntm::collection::{Collection, CollectionWithId, Id};
+use ntm::relations::IdxSet;
 use std::io::{self, BufRead};
 use std::path::PathBuf;
 use structopt::StructOpt;
-use navitia_model as ntm;
-use ntm::collection::{Collection, CollectionWithId, Id};
-use ntm::relations::{IdxSet};
 
 pub mod expr;
 
@@ -37,7 +37,7 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
         match expr::Expr::parse(cmd.as_str()) {
             Ok(expr) => print_ids(
                 &Eval::new(&model.stop_areas, &model).expr(&expr),
-                &model.stop_areas
+                &model.stop_areas,
             ),
             Err(e) => eprintln!("{}", e),
         }
@@ -88,14 +88,14 @@ where
     fn fun(&self, f: &expr::Fun) -> IdxSet<T> {
         match (f.method.as_str(), f.args.as_slice()) {
             ("id", [arg]) | ("uri", [arg]) => self.id(&f.obj, arg),
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
     fn id(&self, obj: &str, id: &str) -> IdxSet<T> {
         match obj {
             "line" => self.id_impl(&self.model.lines, id),
             "stop_area" => self.id_impl(&self.model.stop_areas, id),
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
     fn id_impl<U: Id<U>>(&self, objs: &CollectionWithId<U>, id: &str) -> IdxSet<T>

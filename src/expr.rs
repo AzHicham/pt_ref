@@ -305,7 +305,10 @@ mod test {
         );
         assert_eq!(
             expr().easy_parse(" all - none - all - none "),
-            Ok((Expr::diff(All, Expr::diff(Empty, Expr::diff(All, Empty))), ""))
+            Ok((
+                Expr::diff(All, Expr::diff(Empty, Expr::diff(All, Empty))),
+                ""
+            ))
         );
     }
 
