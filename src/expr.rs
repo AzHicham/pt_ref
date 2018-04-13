@@ -33,7 +33,7 @@ impl Expr {
 #[derive(Debug, PartialEq)]
 pub enum Pred {
     All,
-    None,
+    Empty,
     Fun(Fun),
 }
 impl From<Pred> for Expr {
@@ -115,7 +115,7 @@ where
     spaces()
         .with(choice((
             string("all").map(|_| Pred::All),
-            string("none").map(|_| Pred::None),
+            string("none").map(|_| Pred::Empty),
             fun().map(Pred::Fun),
         )))
         .skip(spaces())
@@ -247,7 +247,7 @@ mod test {
     #[test]
     fn test_pred() {
         assert_eq!(pred().easy_parse(" all "), Ok((Pred::All, "")));
-        assert_eq!(pred().easy_parse(" none "), Ok((Pred::None, "")));
+        assert_eq!(pred().easy_parse(" none "), Ok((Pred::Empty, "")));
         assert_eq!(
             pred().easy_parse(" f . a ( ) "),
             Ok((Pred::Fun(Fun::new("f", "a", &[])), ""))
@@ -259,7 +259,7 @@ mod test {
         assert_eq!(expr().easy_parse(" all "), Ok((Expr::Pred(Pred::All), "")));
         assert_eq!(
             expr().easy_parse(" none "),
-            Ok((Expr::Pred(Pred::None), ""))
+            Ok((Expr::Pred(Pred::Empty), ""))
         );
         assert_eq!(
             expr().easy_parse(" f . a ( ) "),
@@ -273,11 +273,11 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all and none "),
-            Ok((Expr::and(All, None), ""))
+            Ok((Expr::and(All, Empty), ""))
         );
         assert_eq!(
             expr().easy_parse(" all and none and all and none "),
-            Ok((Expr::and(All, Expr::and(None, Expr::and(All, None))), ""))
+            Ok((Expr::and(All, Expr::and(Empty, Expr::and(All, Empty))), ""))
         );
     }
 
@@ -287,11 +287,11 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all or none "),
-            Ok((Expr::or(All, None), ""))
+            Ok((Expr::or(All, Empty), ""))
         );
         assert_eq!(
             expr().easy_parse(" all or none or all or none "),
-            Ok((Expr::or(All, Expr::or(None, Expr::or(All, None))), ""))
+            Ok((Expr::or(All, Expr::or(Empty, Expr::or(All, Empty))), ""))
         );
     }
 
@@ -301,11 +301,11 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all - none "),
-            Ok((Expr::diff(All, None), ""))
+            Ok((Expr::diff(All, Empty), ""))
         );
         assert_eq!(
             expr().easy_parse(" all - none - all - none "),
-            Ok((Expr::diff(All, Expr::diff(None, Expr::diff(All, None))), ""))
+            Ok((Expr::diff(All, Expr::diff(Empty, Expr::diff(All, Empty))), ""))
         );
     }
 
@@ -315,14 +315,14 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all and all or none and all "),
-            Ok((Expr::or(Expr::and(All, All), Expr::and(None, All)), ""))
+            Ok((Expr::or(Expr::and(All, All), Expr::and(Empty, All)), ""))
         );
         assert_eq!(
             expr().easy_parse(" all and all or none and all or none and all "),
             Ok((
                 Expr::or(
                     Expr::and(All, All),
-                    Expr::or(Expr::and(None, All), Expr::and(None, All))
+                    Expr::or(Expr::and(Empty, All), Expr::and(Empty, All))
                 ),
                 ""
             ))
@@ -335,7 +335,7 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all - all and none - all "),
-            Ok((Expr::and(Expr::diff(All, All), Expr::diff(None, All)), ""))
+            Ok((Expr::and(Expr::diff(All, All), Expr::diff(Empty, All)), ""))
         );
     }
 
@@ -345,7 +345,7 @@ mod test {
 
         assert_eq!(
             expr().easy_parse(" all - all or none - all "),
-            Ok((Expr::or(Expr::diff(All, All), Expr::diff(None, All)), ""))
+            Ok((Expr::or(Expr::diff(All, All), Expr::diff(Empty, All)), ""))
         );
     }
 
@@ -357,8 +357,8 @@ mod test {
             expr().easy_parse(" all - all and none - none or none - all "),
             Ok((
                 Expr::or(
-                    Expr::and(Expr::diff(All, All), Expr::diff(None, None)),
-                    Expr::diff(None, All)
+                    Expr::and(Expr::diff(All, All), Expr::diff(Empty, Empty)),
+                    Expr::diff(Empty, All)
                 ),
                 ""
             ))
@@ -372,11 +372,11 @@ mod test {
         assert_eq!(expr().easy_parse(" ( all ) "), Ok((All.into(), "")));
         assert_eq!(
             expr().easy_parse(" ( all and all ) - ( none and all ) "),
-            Ok((Expr::diff(Expr::and(All, All), Expr::and(None, All)), ""))
+            Ok((Expr::diff(Expr::and(All, All), Expr::and(Empty, All)), ""))
         );
         assert_eq!(
             expr().easy_parse(" ( all and all ) - ( none or all ) "),
-            Ok((Expr::diff(Expr::and(All, All), Expr::or(None, All)), ""))
+            Ok((Expr::diff(Expr::and(All, All), Expr::or(Empty, All)), ""))
         );
     }
 }
