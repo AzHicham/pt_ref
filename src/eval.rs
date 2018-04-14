@@ -5,6 +5,9 @@ use ntm::relations::IdxSet;
 
 macro_rules! dispatch {
     ($model:expr, $obj:expr, $expr:expr) => {
+        dispatch!($model, $obj, $expr, Default::default())
+    };
+    ($model:expr, $obj:expr, $expr:expr, $default:expr) => {
         match $obj {
             "contributor" => $expr(&$model.contributors),
             "dataset" => $expr(&$model.datasets),
@@ -16,7 +19,7 @@ macro_rules! dispatch {
             "physical_mode" => $expr(&$model.physical_modes),
             "stop_area" => $expr(&$model.stop_areas),
             "company" => $expr(&$model.companies),
-            _ => Default::default(),
+            _ => $default,
         }
     };
 }

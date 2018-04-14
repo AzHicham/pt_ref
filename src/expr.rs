@@ -187,12 +187,10 @@ parser!{
     {
         spaces()
             .skip(char('"'))
-            .with(
-                many(choice((
-                    none_of("\\\"".chars()),
-                    char('\\').with(one_of("\\\"".chars())),
-                )))
-            )
+            .with(many(choice((
+                none_of("\\\"".chars()),
+                char('\\').with(one_of("\\\"".chars())),
+            ))))
             .skip(char('"'))
             .skip(spaces())
     }

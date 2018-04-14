@@ -41,10 +41,15 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
     for cmd in stdin.lines() {
         let cmd = cmd?;
         match expr::parse(cmd.as_str()) {
-            Ok(expr) => dispatch!(model, expr.object.as_str(), |c| print(
-                &eval::Eval::new(c, &model).run(&expr.expr),
-                c,
-            ).unwrap()),
+            Ok(expr) => dispatch!(
+                model,
+                expr.object.as_str(),
+                |c| print(
+                    &eval::Eval::new(c, &model).run(&expr.expr),
+                    c,
+                ),
+                { eprintln!("unknown object {}", expr.object); Ok(()) }
+            )?,
             Err(e) => eprintln!("{}", e),
         }
     }
