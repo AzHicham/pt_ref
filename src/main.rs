@@ -4,15 +4,17 @@ extern crate combine;
 extern crate structopt;
 extern crate failure;
 extern crate navitia_model as ntm;
+extern crate serde;
+extern crate serde_json;
 
-use ntm::collection::{Collection, Id};
+use ntm::collection::Collection;
 use ntm::relations::IdxSet;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-pub mod expr;
 pub mod eval;
+pub mod expr;
 
 fn main() {
     if let Err(err) = run(Opt::from_args()) {
@@ -38,20 +40,22 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
     for cmd in stdin.lines() {
         let cmd = cmd?;
         match expr::Expr::parse(cmd.as_str()) {
-            Ok(expr) => print_ids(
+            Ok(expr) => print(
                 &eval::Eval::new(&model.stop_areas, &model).run(&expr),
                 &model.stop_areas,
-            ),
+            )?,
             Err(e) => eprintln!("{}", e),
         }
     }
     Ok(())
 }
 
-fn print_ids<T: Id<T>>(set: &IdxSet<T>, objects: &Collection<T>) {
-    print!("ids: ");
-    for &idx in set {
-        print!("{},", objects[idx].id());
-    }
+fn print<T>(set: &IdxSet<T>, objects: &Collection<T>) -> Result<(), failure::Error>
+where
+    T: serde::Serialize,
+{
+    let objs: Vec<_> = objects.iter_from(set).collect();
+    serde_json::to_writer_pretty(io::stdout(), &objs)?;
     println!();
+    Ok(())
 }

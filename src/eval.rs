@@ -1,24 +1,24 @@
-use ntm;
 use expr;
+use ntm;
 use ntm::collection::{Collection, CollectionWithId, Id};
 use ntm::relations::IdxSet;
 
 macro_rules! dispatch {
     ($model:expr, $obj:expr, $expr:expr) => {
         match $obj {
-            "contributor" => $expr ( & $model.contributors ),
-            "dataset" => $expr ( & $model.datasets ),
-            "network" => $expr ( & $model.networks ),
-            "commercial_mode" => $expr ( & $model.commercial_modes ),
-            "line" => $expr ( & $model.lines ),
-            "route" => $expr ( & $model.routes ),
-            "vehicle_journey" => $expr ( & $model.vehicle_journeys ),
-            "physical_mode" => $expr ( & $model.physical_modes ),
-            "stop_area" => $expr ( & $model.stop_areas ),
-            "company" => $expr ( & $model.companies ),
+            "contributor" => $expr(&$model.contributors),
+            "dataset" => $expr(&$model.datasets),
+            "network" => $expr(&$model.networks),
+            "commercial_mode" => $expr(&$model.commercial_modes),
+            "line" => $expr(&$model.lines),
+            "route" => $expr(&$model.routes),
+            "vehicle_journey" => $expr(&$model.vehicle_journeys),
+            "physical_mode" => $expr(&$model.physical_modes),
+            "stop_area" => $expr(&$model.stop_areas),
+            "company" => $expr(&$model.companies),
             _ => Default::default(),
         }
-    }
+    };
 }
 
 pub struct Eval<'a, T: 'a> {
