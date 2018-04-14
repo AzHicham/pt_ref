@@ -13,6 +13,7 @@ use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+#[macro_use]
 pub mod eval;
 pub mod expr;
 
@@ -39,11 +40,11 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
     let stdin = io::BufReader::new(io::stdin());
     for cmd in stdin.lines() {
         let cmd = cmd?;
-        match expr::Expr::parse(cmd.as_str()) {
-            Ok(expr) => print(
-                &eval::Eval::new(&model.stop_areas, &model).run(&expr),
-                &model.stop_areas,
-            )?,
+        match expr::parse(cmd.as_str()) {
+            Ok(expr) => dispatch!(model, expr.object.as_str(), |c| print(
+                &eval::Eval::new(c, &model).run(&expr.expr),
+                c,
+            ).unwrap()),
             Err(e) => eprintln!("{}", e),
         }
     }

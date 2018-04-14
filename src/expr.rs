@@ -5,6 +5,19 @@ use combine::*;
 
 pub type Error<'a> = easy::Errors<char, &'a str, stream::state::SourcePosition>;
 
+pub fn parse<'a>(s: &'a str) -> Result<ToObject, Error<'a>> {
+    to_object()
+        .skip(eof())
+        .easy_parse(State::new(s))
+        .map(|res| res.0)
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ToObject {
+    pub object: String,
+    pub expr: Expr,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Expr {
     Pred(Pred),
@@ -13,12 +26,6 @@ pub enum Expr {
     Diff(Box<Expr>, Box<Expr>),
 }
 impl Expr {
-    pub fn parse(s: &str) -> Result<Self, Error> {
-        expr()
-            .skip(eof())
-            .easy_parse(State::new(s))
-            .map(|res| res.0)
-    }
     pub fn and<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::And(Box::new(lhs.into()), Box::new(rhs.into()))
     }
@@ -56,6 +63,20 @@ impl Fun {
             args: args.iter().map(|s| s.to_string()).collect(),
         }
     }
+}
+
+fn to_object<I>() -> impl Parser<Input = I, Output = ToObject>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    spaces()
+        .with((ident(), char('('), expr(), char(')')))
+        .map(|t| ToObject {
+            object: t.0,
+            expr: t.2,
+        })
+        .skip(spaces())
 }
 
 fn expr_leaf<I>() -> impl Parser<Input = I, Output = Expr>
@@ -133,9 +154,9 @@ where
             between(
                 char('('),
                 char(')'),
-                spaces().with(sep_by(spaces().with(str()), char(','))),
+                spaces().with(sep_by(spaces().with(my_str()), char(','))),
             ),
-            token('=').skip(spaces()).with(str()).map(|s| vec![s]),
+            token('=').skip(spaces()).with(my_str()).map(|s| vec![s]),
         )),
     ).map(|t| Fun {
             obj: t.0,
@@ -144,12 +165,10 @@ where
         })
         .skip(spaces())
 }
-fn str<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    quoted_str().or(ident())
+parser!{
+    fn my_str[I]()(I) -> String where [I: Stream<Item = char>] {
+        quoted_str().or(ident())
+    }
 }
 fn ident<I>() -> impl Parser<Input = I, Output = String>
 where
@@ -159,7 +178,7 @@ where
     spaces()
         .with(recognize((
             letter(),
-            skip_many(letter().or(digit()).or(char('_'))),
+            skip_many(letter().or(digit()).or(one_of("_:".chars()))),
         )))
         .skip(spaces())
 }
