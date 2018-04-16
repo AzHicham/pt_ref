@@ -1,3 +1,5 @@
+#![feature(specialization)]
+
 #[macro_use]
 extern crate combine;
 #[macro_use]
@@ -44,11 +46,11 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
             Ok(expr) => dispatch!(
                 model,
                 expr.object.as_str(),
-                |c| print(
-                    &eval::Eval::new(c, &model).run(&expr.expr),
-                    c,
-                ),
-                { eprintln!("unknown object {}", expr.object); Ok(()) }
+                |c| print(&eval::Eval::new(c, &model).run(&expr.expr), c),
+                {
+                    eprintln!("unknown object {}", expr.object);
+                    Ok(())
+                }
             )?,
             Err(e) => eprintln!("{}", e),
         }

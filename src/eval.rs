@@ -24,24 +24,30 @@ macro_rules! dispatch {
     };
 }
 
+trait GetCorresponding<T, U> {
+    fn get_corresponding(&self, &IdxSet<T>) -> IdxSet<U>;
+}
+
+impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U> {
+    default fn get_corresponding(&self, _: &IdxSet<T>) -> IdxSet<U> {
+        Default::default()
+    }
+}
+
+impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U>
+where
+    IdxSet<T>: ntm::model::GetCorresponding<U>,
+{
+    fn get_corresponding(&self, from: &IdxSet<T>) -> IdxSet<U> {
+        (from as &ntm::model::GetCorresponding<U>).get_corresponding(self.model)
+    }
+}
+
 pub struct Eval<'a, T: 'a> {
     model: &'a ntm::Model,
     target: &'a Collection<T>,
 }
-impl<'a, T> Eval<'a, T>
-where
-    IdxSet<ntm::objects::Contributor>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::Dataset>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::Network>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::CommercialMode>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::Line>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::Route>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::VehicleJourney>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::PhysicalMode>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::StopArea>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::StopPoint>: ntm::model::GetCorresponding<T>,
-    IdxSet<ntm::objects::Company>: ntm::model::GetCorresponding<T>,
-{
+impl<'a, T> Eval<'a, T> {
     pub fn new(target: &'a Collection<T>, model: &'a ntm::Model) -> Self {
         Eval { target, model }
     }
@@ -55,10 +61,16 @@ where
         use expr::Expr::*;
         match e {
             Pred(p) => self.pred(p),
+            ToObject(o) => self.to_object(&o),
             And(l, r) => &self.expr(l) & &self.expr(r),
             Or(l, r) => &self.expr(l) | &self.expr(r),
             Diff(l, r) => &self.expr(l) - &self.expr(r),
         }
+    }
+    fn to_object(&self, o: &expr::ToObject) -> IdxSet<T> {
+        dispatch!(self.model, o.object.as_str(), |c| {
+            self.get_corresponding(&Eval::new(c, &self.model).expr(&o.expr))
+        })
     }
     fn pred(&self, p: &expr::Pred) -> IdxSet<T> {
         use expr::Pred::*;
@@ -77,11 +89,7 @@ where
     fn id(&self, obj: &str, id: &str) -> IdxSet<T> {
         dispatch!(self.model, obj, |c| self.id_impl(c, id))
     }
-    fn id_impl<U: Id<U>>(&self, objs: &CollectionWithId<U>, id: &str) -> IdxSet<T>
-    where
-        IdxSet<U>: ntm::model::GetCorresponding<T>,
-    {
-        let from = objs.get_idx(id).into_iter().collect();
-        self.model.get_corresponding(&from)
+    fn id_impl<U: Id<U>>(&self, objs: &CollectionWithId<U>, id: &str) -> IdxSet<T> {
+        self.get_corresponding(&objs.get_idx(id).into_iter().collect())
     }
 }
