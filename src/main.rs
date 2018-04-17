@@ -5,6 +5,7 @@ extern crate combine;
 #[macro_use]
 extern crate structopt;
 extern crate failure;
+extern crate humantime;
 extern crate navitia_model as ntm;
 extern crate serde;
 extern crate serde_json;
@@ -35,18 +36,18 @@ struct Opt {
 }
 
 fn run(opt: Opt) -> Result<(), failure::Error> {
-    print!("Reading NTFS...");
-    io::stdout().flush()?;
-    let model = ntm::ntfs::read(&opt.ntfs)?;
-    println!(" done.");
+    eprint!("Reading NTFS...");
+    io::stderr().flush()?;
+    let model = timed(" done", || ntm::ntfs::read(&opt.ntfs))?;
     let stdin = io::BufReader::new(io::stdin());
+    prompt()?;
     for cmd in stdin.lines() {
         let cmd = cmd?;
         match expr::parse(cmd.as_str()) {
             Ok(expr) => dispatch!(
                 model,
                 expr.object.as_str(),
-                |c| print(&eval::Eval::new(c, &model).run(&expr.expr), c),
+                |c| timed("", || print(&eval::Eval::new(c, &model).run(&expr.expr), c)),
                 {
                     eprintln!("unknown object {}", expr.object);
                     Ok(())
@@ -54,6 +55,7 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
             )?,
             Err(e) => eprintln!("{}", e),
         }
+        prompt()?;
     }
     Ok(())
 }
@@ -65,5 +67,24 @@ where
     let objs: Vec<_> = objects.iter_from(set).collect();
     serde_json::to_writer_pretty(io::stdout(), &objs)?;
     println!();
+    eprint!("{} objects", objs.len());
     Ok(())
+}
+
+fn timed<T, F: FnOnce() -> T>(s: &str, f: F) -> T {
+    let begin = std::time::Instant::now();
+    let res = f();
+    let end = std::time::Instant::now();
+    eprintln!(
+        "{} in {}.",
+        s,
+        humantime::format_duration(end.duration_since(begin))
+    );
+    res
+}
+
+fn prompt() -> Result<(), io::Error> {
+    let mut stderr = io::stderr();
+    write!(stderr, "> ")?;
+    io::stderr().flush()
 }

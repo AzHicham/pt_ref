@@ -65,6 +65,16 @@ impl Fun {
         }
     }
 }
+impl ::std::fmt::Display for Fun {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        let args = self.args
+            .iter()
+            .map(|a| format!("{:?}", a))
+            .collect::<Vec<_>>()
+            .join(", ");
+        write!(f, "{}.{}({})", self.obj, self.method, args)
+    }
+}
 
 fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
 where
@@ -153,7 +163,7 @@ where
 {
     choice((
         lex(string("all")).map(|_| Pred::All),
-        lex(string("none")).map(|_| Pred::Empty),
+        lex(string("empty")).map(|_| Pred::Empty),
         fun().map(Pred::Fun),
     ))
 }
@@ -285,7 +295,7 @@ mod test {
     #[test]
     fn test_pred() {
         assert_eq!(pred().easy_parse("all "), Ok((Pred::All, "")));
-        assert_eq!(pred().easy_parse("none "), Ok((Pred::Empty, "")));
+        assert_eq!(pred().easy_parse("empty "), Ok((Pred::Empty, "")));
         assert_eq!(
             pred().easy_parse("f . a ( ) "),
             Ok((Pred::Fun(Fun::new("f", "a", &[])), ""))
@@ -296,7 +306,7 @@ mod test {
     fn test_basic_expr() {
         assert_eq!(expr().easy_parse("all "), Ok((Expr::Pred(Pred::All), "")));
         assert_eq!(
-            expr().easy_parse("none "),
+            expr().easy_parse("empty "),
             Ok((Expr::Pred(Pred::Empty), ""))
         );
         assert_eq!(
@@ -310,11 +320,11 @@ mod test {
         use self::Pred::*;
 
         assert_eq!(
-            expr().easy_parse("all and none "),
+            expr().easy_parse("all and empty "),
             Ok((Expr::and(All, Empty), ""))
         );
         assert_eq!(
-            expr().easy_parse("all and none and all and none "),
+            expr().easy_parse("all and empty and all and empty "),
             Ok((Expr::and(All, Expr::and(Empty, Expr::and(All, Empty))), ""))
         );
     }
@@ -324,11 +334,11 @@ mod test {
         use self::Pred::*;
 
         assert_eq!(
-            expr().easy_parse("all or none "),
+            expr().easy_parse("all or empty "),
             Ok((Expr::or(All, Empty), ""))
         );
         assert_eq!(
-            expr().easy_parse("all or none or all or none "),
+            expr().easy_parse("all or empty or all or empty "),
             Ok((Expr::or(All, Expr::or(Empty, Expr::or(All, Empty))), ""))
         );
     }
@@ -338,11 +348,11 @@ mod test {
         use self::Pred::*;
 
         assert_eq!(
-            expr().easy_parse("all - none "),
+            expr().easy_parse("all - empty "),
             Ok((Expr::diff(All, Empty), ""))
         );
         assert_eq!(
-            expr().easy_parse("all - none - all - none "),
+            expr().easy_parse("all - empty - all - empty "),
             Ok((
                 Expr::diff(All, Expr::diff(Empty, Expr::diff(All, Empty))),
                 ""
@@ -355,11 +365,11 @@ mod test {
         use self::Pred::*;
 
         assert_eq!(
-            expr().easy_parse("all and all or none and all "),
+            expr().easy_parse("all and all or empty and all "),
             Ok((Expr::or(Expr::and(All, All), Expr::and(Empty, All)), ""))
         );
         assert_eq!(
-            expr().easy_parse("all and all or none and all or none and all "),
+            expr().easy_parse("all and all or empty and all or empty and all "),
             Ok((
                 Expr::or(
                     Expr::and(All, All),
@@ -375,7 +385,7 @@ mod test {
         use self::Pred::*;
 
         assert_eq!(
-            expr().easy_parse("all - all and none - all "),
+            expr().easy_parse("all - all and empty - all "),
             Ok((Expr::and(Expr::diff(All, All), Expr::diff(Empty, All)), ""))
         );
     }
@@ -385,7 +395,7 @@ mod test {
         use self::Pred::*;
 
         assert_eq!(
-            expr().easy_parse("all - all or none - all "),
+            expr().easy_parse("all - all or empty - all "),
             Ok((Expr::or(Expr::diff(All, All), Expr::diff(Empty, All)), ""))
         );
     }
@@ -395,7 +405,7 @@ mod test {
         use self::Pred::*;
 
         assert_eq!(
-            expr().easy_parse("all - all and none - none or none - all "),
+            expr().easy_parse("all - all and empty - empty or empty - all "),
             Ok((
                 Expr::or(
                     Expr::and(Expr::diff(All, All), Expr::diff(Empty, Empty)),
@@ -412,11 +422,11 @@ mod test {
 
         assert_eq!(expr().easy_parse("( all ) "), Ok((All.into(), "")));
         assert_eq!(
-            expr().easy_parse("( all and all ) - ( none and all ) "),
+            expr().easy_parse("( all and all ) - ( empty and all ) "),
             Ok((Expr::diff(Expr::and(All, All), Expr::and(Empty, All)), ""))
         );
         assert_eq!(
-            expr().easy_parse("( all and all ) - ( none or all ) "),
+            expr().easy_parse("( all and all ) - ( empty or all ) "),
             Ok((Expr::diff(Expr::and(All, All), Expr::or(Empty, All)), ""))
         );
     }

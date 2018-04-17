@@ -63,13 +63,26 @@ impl<'a, T> Eval<'a, T> {
         }
     }
     fn fun(&self, f: &expr::Fun) -> IdxSet<T> {
-        match (f.method.as_str(), f.args.as_slice()) {
-            ("id", [arg]) | ("uri", [arg]) => self.id(&f.obj, arg),
-            _ => unimplemented!(),
+        match (f.obj.as_str(), f.method.as_str(), f.args.as_slice()) {
+            (_, "id", [arg]) | (_, "uri", [arg]) => self.id(&f.obj, arg),
+            ("line", "code", [arg]) => self.line_code(arg),
+            _ => {
+                eprintln!("function {} is not supported, returning empty result", f);
+                Default::default()
+            }
         }
     }
     fn id(&self, obj: &str, id: &str) -> IdxSet<T> {
         dispatch!(self.model, obj, |c| self.get_from_id(c, id))
+    }
+    fn line_code(&self, code: &str) -> IdxSet<T> {
+        let code = Some(code.to_string());
+        let lines = self.model
+            .lines
+            .iter()
+            .filter_map(|(idx, l)| if l.code == code { Some(idx) } else { None })
+            .collect();
+        self.get_corresponding(&lines)
     }
 }
 
