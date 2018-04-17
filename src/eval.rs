@@ -19,28 +19,10 @@ macro_rules! dispatch {
             "physical_mode" => $expr(&$model.physical_modes),
             "stop_area" => $expr(&$model.stop_areas),
             "company" => $expr(&$model.companies),
+            "connection" => $expr(&$model.transfers),
             _ => $default,
         }
     };
-}
-
-trait GetCorresponding<T, U> {
-    fn get_corresponding(&self, &IdxSet<T>) -> IdxSet<U>;
-}
-
-impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U> {
-    default fn get_corresponding(&self, _: &IdxSet<T>) -> IdxSet<U> {
-        Default::default()
-    }
-}
-
-impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U>
-where
-    IdxSet<T>: ntm::model::GetCorresponding<U>,
-{
-    fn get_corresponding(&self, from: &IdxSet<T>) -> IdxSet<U> {
-        (from as &ntm::model::GetCorresponding<U>).get_corresponding(self.model)
-    }
 }
 
 pub struct Eval<'a, T: 'a> {
@@ -87,9 +69,37 @@ impl<'a, T> Eval<'a, T> {
         }
     }
     fn id(&self, obj: &str, id: &str) -> IdxSet<T> {
-        dispatch!(self.model, obj, |c| self.id_impl(c, id))
+        dispatch!(self.model, obj, |c| self.get_from_id(c, id))
     }
-    fn id_impl<U: Id<U>>(&self, objs: &CollectionWithId<U>, id: &str) -> IdxSet<T> {
+}
+
+trait GetCorresponding<T, U> {
+    fn get_corresponding(&self, &IdxSet<T>) -> IdxSet<U>;
+}
+impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U> {
+    default fn get_corresponding(&self, _: &IdxSet<T>) -> IdxSet<U> {
+        Default::default()
+    }
+}
+impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U>
+where
+    IdxSet<T>: ntm::model::GetCorresponding<U>,
+{
+    fn get_corresponding(&self, from: &IdxSet<T>) -> IdxSet<U> {
+        (from as &ntm::model::GetCorresponding<U>).get_corresponding(self.model)
+    }
+}
+
+trait GetFromId<T, U> {
+    fn get_from_id(&self, objs: &T, id: &str) -> IdxSet<U>;
+}
+impl<'a, T: Id<T>, U> GetFromId<CollectionWithId<T>, U> for Eval<'a, U> {
+    fn get_from_id(&self, objs: &CollectionWithId<T>, id: &str) -> IdxSet<U> {
         self.get_corresponding(&objs.get_idx(id).into_iter().collect())
+    }
+}
+impl<'a, T, U> GetFromId<Collection<T>, U> for Eval<'a, U> {
+    fn get_from_id(&self, _: &Collection<T>, _: &str) -> IdxSet<U> {
+        Default::default()
     }
 }
