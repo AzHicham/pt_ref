@@ -36,6 +36,12 @@ impl Expr {
     pub fn diff<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::Diff(Box::new(lhs.into()), Box::new(rhs.into()))
     }
+    pub fn to_object<T: Into<Self>>(object: &str, expr: T) -> Self {
+        Expr::ToObject(Box::new(ToObject {
+            object: object.to_string(),
+            expr: expr.into(),
+        }))
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -193,8 +199,15 @@ where
 }
 parser!{
     fn my_str[I]()(I) -> String where [I: Stream<Item = char>] {
-        quoted_str().or(ident())
+        quoted_str().or(lazy_str())
     }
+}
+fn lazy_str<I>() -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(many1(choice((letter(), digit(), one_of("_:".chars())))))
 }
 parser!{
     fn ident[I]()(I) -> String where [I: Stream<Item = char>]
@@ -283,12 +296,24 @@ mod test {
             Ok((Fun::new("stop_area", "uri", &["OIF:42"]), ""))
         );
         assert_eq!(
-            fun().easy_parse(r#"stop_area . uri = "OIF:42""#),
+            fun().easy_parse(r#"stop_area . uri = "OIF:42" "#),
             Ok((Fun::new("stop_area", "uri", &["OIF:42"]), ""))
         );
         assert_eq!(
-            fun().easy_parse(r#"stop_area . uri = foo"#),
+            fun().easy_parse(r#"stop_area . uri = OIF:42 "#),
+            Ok((Fun::new("stop_area", "uri", &["OIF:42"]), ""))
+        );
+        assert_eq!(
+            fun().easy_parse(r#"stop_area . uri = foo "#),
             Ok((Fun::new("stop_area", "uri", &["foo"]), ""))
+        );
+        assert_eq!(
+            fun().easy_parse(r#"stop_area . uri = 42 "#),
+            Ok((Fun::new("stop_area", "uri", &["42"]), ""))
+        );
+        assert_eq!(
+            fun().easy_parse(r#"stop_area . uri = 1ee7_: "#),
+            Ok((Fun::new("stop_area", "uri", &["1ee7_:"]), ""))
         );
     }
 
@@ -428,6 +453,30 @@ mod test {
         assert_eq!(
             expr().easy_parse("( all and all ) - ( empty or all ) "),
             Ok((Expr::diff(Expr::and(All, All), Expr::or(Empty, All)), ""))
+        );
+    }
+
+    #[test]
+    fn test_to_object_expr() {
+        use self::Pred::*;
+
+        assert_eq!(
+            expr().easy_parse("get line <- all "),
+            Ok((Expr::to_object("line", All), "")),
+        );
+        assert_eq!(
+            expr().easy_parse("get line <- get stop_area <- all "),
+            Ok((
+                Expr::to_object("line", Expr::to_object("stop_area", All)),
+                ""
+            )),
+        );
+        assert_eq!(
+            expr().easy_parse("get line <- empty and (get stop_area <- all) "),
+            Ok((
+                Expr::to_object("line", Expr::and(Empty, Expr::to_object("stop_area", All))),
+                ""
+            )),
         );
     }
 }

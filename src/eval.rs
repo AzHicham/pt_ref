@@ -65,6 +65,7 @@ impl<'a, T> Eval<'a, T> {
     fn fun(&self, f: &expr::Fun) -> IdxSet<T> {
         match (f.obj.as_str(), f.method.as_str(), f.args.as_slice()) {
             (_, "id", [arg]) | (_, "uri", [arg]) => self.id(&f.obj, arg),
+            (_, "has_code", [key, value]) => self.has_code(&f.obj, key, value),
             ("line", "code", [arg]) => self.line_code(arg),
             _ => {
                 eprintln!("function {} is not supported, returning empty result", f);
@@ -74,6 +75,9 @@ impl<'a, T> Eval<'a, T> {
     }
     fn id(&self, obj: &str, id: &str) -> IdxSet<T> {
         dispatch!(self.model, obj, |c| self.get_from_id(c, id))
+    }
+    fn has_code(&self, obj: &str, key: &str, value: &str) -> IdxSet<T> {
+        dispatch!(self.model, obj, |c| self.get_from_code(c, key, value))
     }
     fn line_code(&self, code: &str) -> IdxSet<T> {
         let code = Some(code.to_string());
@@ -113,6 +117,33 @@ impl<'a, T: Id<T>, U> GetFromId<CollectionWithId<T>, U> for Eval<'a, U> {
 }
 impl<'a, T, U> GetFromId<Collection<T>, U> for Eval<'a, U> {
     fn get_from_id(&self, _: &Collection<T>, _: &str) -> IdxSet<U> {
+        Default::default()
+    }
+}
+
+trait GetFromCode<T, U> {
+    fn get_from_code(&self, objs: &Collection<T>, key: &str, value: &str) -> IdxSet<U>;
+}
+impl<'a, T, U> GetFromCode<T, U> for Eval<'a, U>
+where
+    T: ntm::objects::Codes,
+{
+    fn get_from_code(&self, objs: &Collection<T>, key: &str, value: &str) -> IdxSet<U> {
+        let code = (key.to_string(), value.to_string());
+        let from = objs.iter()
+            .filter_map(|(idx, obj)| {
+                if obj.codes().contains(&code) {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        self.get_corresponding(&from)
+    }
+}
+impl<'a, T, U> GetFromCode<T, U> for Eval<'a, U> {
+    default fn get_from_code(&self, _: &Collection<T>, _: &str, _: &str) -> IdxSet<U> {
         Default::default()
     }
 }
