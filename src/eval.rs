@@ -131,13 +131,8 @@ where
     fn get_from_code(&self, objs: &Collection<T>, key: &str, value: &str) -> IdxSet<U> {
         let code = (key.to_string(), value.to_string());
         let from = objs.iter()
-            .filter_map(|(idx, obj)| {
-                if obj.codes().contains(&code) {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
+            .filter(|&(_, obj)| obj.codes().contains(&code))
+            .map(|(idx, _)| idx)
             .collect();
         self.get_corresponding(&from)
     }
