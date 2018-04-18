@@ -4,7 +4,7 @@ Explore the public transport referencial with a nice DSL.
 
 This project is a little funny POC, but nothing really polished.
 
-## Demonstration
+## Tutorial
 
 First, you need a [NTFS dataset](https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_fr.md). You can find NTFS dataset at the [navitia open databar](https://www.navitia.io/datasets). If you are in a hurry, get the [Île-de-France dataset (click on ntfs.zip)](https://navitia.opendatasoft.com/explore/dataset/fr-idf/table/?sort=type_file)
 
