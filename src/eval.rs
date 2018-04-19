@@ -18,6 +18,7 @@ macro_rules! dispatch {
             "vehicle_journey" => $expr(&$model.vehicle_journeys),
             "physical_mode" => $expr(&$model.physical_modes),
             "stop_area" => $expr(&$model.stop_areas),
+            "stop_point" => $expr(&$model.stop_points),
             "company" => $expr(&$model.companies),
             "connection" => $expr(&$model.transfers),
             _ => $default,
