@@ -104,7 +104,7 @@ where
     IdxSet<T>: ntm::model::GetCorresponding<U>,
 {
     fn get_corresponding(&self, from: &IdxSet<T>) -> IdxSet<U> {
-        (from as &ntm::model::GetCorresponding<U>).get_corresponding(self.model)
+        self.model.get_corresponding(from)
     }
 }
 
