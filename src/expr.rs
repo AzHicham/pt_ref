@@ -14,7 +14,7 @@ pub fn parse<'a>(s: &'a str) -> Result<ToObject, Error<'a>> {
 
 #[derive(Debug, PartialEq)]
 pub struct ToObject {
-    pub object: String,
+    pub object: &'static str,
     pub expr: Expr,
 }
 
@@ -36,9 +36,9 @@ impl Expr {
     pub fn diff<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::Diff(Box::new(lhs.into()), Box::new(rhs.into()))
     }
-    pub fn to_object<T: Into<Self>>(object: &str, expr: T) -> Self {
+    pub fn to_object<T: Into<Self>>(object: &'static str, expr: T) -> Self {
         Expr::ToObject(Box::new(ToObject {
-            object: object.to_string(),
+            object: object,
             expr: expr.into(),
         }))
     }
@@ -58,14 +58,14 @@ impl From<Pred> for Expr {
 
 #[derive(Debug, PartialEq)]
 pub struct Fun {
-    pub obj: String,
+    pub obj: &'static str,
     pub method: String,
     pub args: Vec<String>,
 }
 impl Fun {
-    pub fn new(obj: &str, method: &str, args: &[&str]) -> Self {
+    pub fn new(obj: &'static str, method: &str, args: &[&str]) -> Self {
         Fun {
-            obj: obj.into(),
+            obj: obj,
             method: method.into(),
             args: args.iter().map(|s| s.to_string()).collect(),
         }
@@ -100,7 +100,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (lex(string("get")), ident(), lex(string("<-")), expr()).map(|t| ToObject {
+    (lex(string("get")), object(), lex(string("<-")), expr()).map(|t| ToObject {
         object: t.1,
         expr: t.3,
     })
@@ -114,6 +114,7 @@ where
     choice((
         between(lex(char('(')), lex(char(')')), expr()),
         pred().map(Expr::Pred),
+        expr(),
     ))
 }
 parser!{
@@ -179,7 +180,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        ident(),
+        object(),
         lex(char('.')),
         ident(),
         choice((
@@ -208,6 +209,26 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(many1(choice((letter(), digit(), one_of("_:".chars())))))
+}
+fn object<I>() -> impl Parser<Input = I, Output = &'static str>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(choice((
+        string("contributor"),
+        string("dataset"),
+        string("network"),
+        string("commercial_mode"),
+        string("line"),
+        string("route"),
+        string("vehicle_journey"),
+        string("physical_mode"),
+        string("stop_area"),
+        string("stop_point"),
+        string("company"),
+        string("connection"),
+    )))
 }
 parser!{
     fn ident[I]()(I) -> String where [I: Stream<Item = char>]
@@ -281,8 +302,8 @@ mod test {
     #[test]
     fn test_fun() {
         assert_eq!(
-            fun().easy_parse("f . a ( ) "),
-            Ok((Fun::new("f", "a", &[]), ""))
+            fun().easy_parse("line . a ( ) "),
+            Ok((Fun::new("line", "a", &[]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"vehicle_journey . has_code ( external_code , "OIF:42" ) "#),
@@ -322,8 +343,8 @@ mod test {
         assert_eq!(pred().easy_parse("all "), Ok((Pred::All, "")));
         assert_eq!(pred().easy_parse("empty "), Ok((Pred::Empty, "")));
         assert_eq!(
-            pred().easy_parse("f . a ( ) "),
-            Ok((Pred::Fun(Fun::new("f", "a", &[])), ""))
+            pred().easy_parse("line . a ( ) "),
+            Ok((Pred::Fun(Fun::new("line", "a", &[])), ""))
         );
     }
 
@@ -335,8 +356,8 @@ mod test {
             Ok((Expr::Pred(Pred::Empty), ""))
         );
         assert_eq!(
-            expr().easy_parse("f . a ( ) "),
-            Ok((Expr::Pred(Pred::Fun(Fun::new("f", "a", &[]))), ""))
+            expr().easy_parse("line . a ( ) "),
+            Ok((Expr::Pred(Pred::Fun(Fun::new("line", "a", &[]))), ""))
         );
     }
 
@@ -472,7 +493,7 @@ mod test {
             )),
         );
         assert_eq!(
-            expr().easy_parse("get line <- empty and (get stop_area <- all) "),
+            expr().easy_parse("get line <- empty and get stop_area <- all "),
             Ok((
                 Expr::to_object("line", Expr::and(Empty, Expr::to_object("stop_area", All))),
                 ""

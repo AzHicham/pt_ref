@@ -56,7 +56,7 @@ impl<'a, T> Eval<'a, T> {
     fn to_object(&self, o: &expr::ToObject) -> Result<IdxSet<T>> {
         dispatch!(
             self.model,
-            o.object.as_str(),
+            o.object,
             |c| Ok(self.get_corresponding(&Eval::new(c, &self.model).expr(&o.expr)?)),
             bail!("unknown object {}", o.object)
         )
@@ -70,7 +70,7 @@ impl<'a, T> Eval<'a, T> {
         }
     }
     fn fun(&self, f: &expr::Fun) -> Result<IdxSet<T>> {
-        match (f.obj.as_str(), f.method.as_str(), f.args.as_slice()) {
+        match (f.obj, f.method.as_str(), f.args.as_slice()) {
             (_, "id", [arg]) | (_, "uri", [arg]) => self.id(&f.obj, arg),
             (_, "has_code", [key, value]) => self.has_code(&f.obj, key, value),
             ("line", "code", [arg]) => Ok(self.line_code(arg)),

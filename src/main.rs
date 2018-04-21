@@ -49,7 +49,7 @@ fn run(opt: Opt) -> Result<()> {
         match expr::parse(cmd.as_str()) {
             Ok(expr) => dispatch!(
                 model,
-                expr.object.as_str(),
+                expr.object,
                 |c| run_eval(&expr.expr, c, &model),
                 Ok(writeln!(io::stderr(), "unknown object {}", expr.object)?)
             )?,
