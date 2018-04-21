@@ -4,6 +4,7 @@
 extern crate combine;
 #[macro_use]
 extern crate structopt;
+#[macro_use]
 extern crate failure;
 extern crate humantime;
 extern crate navitia_model as ntm;
@@ -15,6 +16,8 @@ use ntm::relations::IdxSet;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
+
+pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
 #[macro_use]
 pub mod eval;
@@ -35,7 +38,7 @@ struct Opt {
     ntfs: PathBuf,
 }
 
-fn run(opt: Opt) -> Result<(), failure::Error> {
+fn run(opt: Opt) -> Result<()> {
     write!(io::stderr(), "Reading NTFS...")?;
     io::stderr().flush()?;
     let model = timed(" done", || ntm::ntfs::read(&opt.ntfs))?;
@@ -47,7 +50,7 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
             Ok(expr) => dispatch!(
                 model,
                 expr.object.as_str(),
-                |c| timed("", || print(&eval::Eval::new(c, &model).run(&expr.expr), c)),
+                |c| run_eval(&expr.expr, c, &model),
                 Ok(writeln!(io::stderr(), "unknown object {}", expr.object)?)
             )?,
             Err(e) => writeln!(io::stderr(), "{}", e)?,
@@ -57,7 +60,24 @@ fn run(opt: Opt) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn print<T>(set: &IdxSet<T>, objects: &Collection<T>) -> Result<(), failure::Error>
+fn run_eval<T>(expr: &expr::Expr, collection: &Collection<T>, model: &ntm::Model) -> Result<()>
+where
+    T: serde::Serialize,
+{
+    let run = || {
+        let idx_set = match eval::Eval::new(collection, model).run(expr) {
+            Ok(set) => set,
+            Err(e) => {
+                write!(io::stderr(), "Error: {}", e)?;
+                return Ok(());
+            }
+        };
+        print(&idx_set, collection)
+    };
+    timed("", run)
+}
+
+fn print<T>(set: &IdxSet<T>, objects: &Collection<T>) -> Result<()>
 where
     T: serde::Serialize,
 {
@@ -79,8 +99,8 @@ fn timed<T, F: FnOnce() -> T>(s: &str, f: F) -> T {
     res
 }
 
-fn prompt() -> Result<(), io::Error> {
+fn prompt() -> Result<()> {
     let mut stderr = io::stderr();
     write!(stderr, "> ")?;
-    stderr.flush()
+    Ok(stderr.flush()?)
 }
