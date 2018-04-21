@@ -208,7 +208,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    lex(many1(choice((letter(), digit(), one_of("_:".chars())))))
+    lex(many1(choice((letter(), digit(), one_of("_-.:;<>=|".chars())))))
 }
 fn object<I>() -> impl Parser<Input = I, Output = &'static str>
 where
@@ -216,18 +216,18 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(choice((
-        string("contributor"),
-        string("dataset"),
-        string("network"),
-        string("commercial_mode"),
-        string("line"),
-        string("route"),
-        string("vehicle_journey"),
-        string("physical_mode"),
-        string("stop_area"),
-        string("stop_point"),
-        string("company"),
-        string("connection"),
+        try(string("contributor")),
+        try(string("dataset")),
+        try(string("network")),
+        try(string("commercial_mode")),
+        try(string("line")),
+        try(string("route")),
+        try(string("vehicle_journey")),
+        try(string("physical_mode")),
+        try(string("stop_area")),
+        try(string("stop_point")),
+        try(string("company")),
+        try(string("connection")),
     )))
 }
 parser!{
@@ -335,6 +335,10 @@ mod test {
         assert_eq!(
             fun().easy_parse(r#"stop_area . uri = 1ee7_: "#),
             Ok((Fun::new("stop_area", "uri", &["1ee7_:"]), ""))
+        );
+        assert_eq!(
+            fun().easy_parse(r#"stop_point.within_distance(42, -2.2;4.9e-2)"#),
+            Ok((Fun::new("stop_point", "within_distance", &["42", "-2.2;4.9e-2"]), ""))
         );
     }
 
