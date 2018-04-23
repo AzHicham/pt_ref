@@ -74,7 +74,9 @@ impl<'a, T> Eval<'a, T> {
             (_, "id", [arg]) | (_, "uri", [arg]) => self.id(&f.obj, arg),
             (_, "has_code", [key, value]) => self.has_code(&f.obj, key, value),
             ("line", "code", [arg]) => Ok(self.line_code(arg)),
-            ("stop_point", "within_distance", [dist, coord]) => self.stop_point_within_distance(dist, coord),
+            ("stop_point", "within_distance", [dist, coord]) => {
+                self.stop_point_within_distance(dist, coord)
+            }
             _ => bail!("function {} is not supported, returning empty result", f),
         }
     }
@@ -105,12 +107,16 @@ impl<'a, T> Eval<'a, T> {
     }
     fn stop_point_within_distance(&self, distance: &str, coord: &str) -> Result<IdxSet<T>> {
         let distance = distance.parse()?;
-        let split = coord.find(';').ok_or_else(|| format_err!("invalid coord: no `;`"))?;
+        let split = coord
+            .find(';')
+            .ok_or_else(|| format_err!("invalid coord: no `;`"))?;
         let coord = ::ntm::objects::Coord {
             lon: coord[..split].parse()?,
-            lat: coord[split + 1..].parse()?
+            lat: coord[split + 1..].parse()?,
         };
-        let from = self.model.stop_points.iter()
+        let from = self.model
+            .stop_points
+            .iter()
             .filter(|(_, sp)| sp.coord.distance_to(&coord) <= distance)
             .map(|(idx, _)| idx)
             .collect();

@@ -208,7 +208,11 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    lex(many1(choice((letter(), digit(), one_of("_-.:;<>=|".chars())))))
+    lex(many1(choice((
+        letter(),
+        digit(),
+        one_of("_-.:;<>=|".chars()),
+    ))))
 }
 fn object<I>() -> impl Parser<Input = I, Output = &'static str>
 where
@@ -338,7 +342,10 @@ mod test {
         );
         assert_eq!(
             fun().easy_parse(r#"stop_point.within_distance(42, -2.2;4.9e-2)"#),
-            Ok((Fun::new("stop_point", "within_distance", &["42", "-2.2;4.9e-2"]), ""))
+            Ok((
+                Fun::new("stop_point", "within_distance", &["42", "-2.2;4.9e-2"]),
+                ""
+            ))
         );
     }
 
