@@ -74,8 +74,11 @@ impl<'a, T> Eval<'a, T> {
             (_, "id", [arg]) | (_, "uri", [arg]) => self.id(&f.obj, arg),
             (_, "has_code", [key, value]) => self.has_code(&f.obj, key, value),
             ("line", "code", [arg]) => Ok(self.line_code(arg)),
-            ("stop_point", "within_distance", [dist, coord]) => {
-                self.stop_point_within_distance(dist, coord)
+            ("stop_point", "within", [dist, coord]) => {
+                self.within(&self.model.stop_points, dist, coord)
+            }
+            ("stop_area", "within", [dist, coord]) => {
+                self.within(&self.model.stop_areas, dist, coord)
             }
             _ => bail!("function {} is not supported, returning empty result", f),
         }
@@ -105,7 +108,15 @@ impl<'a, T> Eval<'a, T> {
             .collect();
         self.get_corresponding(&lines)
     }
-    fn stop_point_within_distance(&self, distance: &str, coord: &str) -> Result<IdxSet<T>> {
+    fn within<U>(
+        &self,
+        collection: &Collection<U>,
+        distance: &str,
+        coord: &str,
+    ) -> Result<IdxSet<T>>
+    where
+        U: Coord,
+    {
         let distance = distance.parse()?;
         let split = coord
             .find(';')
@@ -114,10 +125,9 @@ impl<'a, T> Eval<'a, T> {
             lon: coord[..split].parse()?,
             lat: coord[split + 1..].parse()?,
         };
-        let from = self.model
-            .stop_points
+        let from = collection
             .iter()
-            .filter(|(_, sp)| sp.coord.distance_to(&coord) <= distance)
+            .filter(|(_, sp)| sp.coord().distance_to(&coord) <= distance)
             .map(|(idx, _)| idx)
             .collect();
         Ok(self.get_corresponding(&from))
@@ -174,5 +184,19 @@ where
 impl<'a, T, U> GetFromCode<T, U> for Eval<'a, U> {
     default fn get_from_code(&self, _: &Collection<T>, _: &str, _: &str) -> Result<IdxSet<U>> {
         bail!("This object does not support has_code")
+    }
+}
+
+trait Coord {
+    fn coord(&self) -> &ntm::objects::Coord;
+}
+impl Coord for ntm::objects::StopPoint {
+    fn coord(&self) -> &ntm::objects::Coord {
+        &self.coord
+    }
+}
+impl Coord for ntm::objects::StopArea {
+    fn coord(&self) -> &ntm::objects::Coord {
+        &self.coord
     }
 }

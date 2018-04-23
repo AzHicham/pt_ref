@@ -341,11 +341,8 @@ mod test {
             Ok((Fun::new("stop_area", "uri", &["1ee7_:"]), ""))
         );
         assert_eq!(
-            fun().easy_parse(r#"stop_point.within_distance(42, -2.2;4.9e-2)"#),
-            Ok((
-                Fun::new("stop_point", "within_distance", &["42", "-2.2;4.9e-2"]),
-                ""
-            ))
+            fun().easy_parse(r#"stop_point.within(42, -2.2;4.9e-2)"#),
+            Ok((Fun::new("stop_point", "within", &["42", "-2.2;4.9e-2"]), ""))
         );
     }
 
