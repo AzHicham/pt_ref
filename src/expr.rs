@@ -12,9 +12,37 @@ pub fn parse<'a>(s: &'a str) -> Result<ToObject, Error<'a>> {
         .map(|res| res.0)
 }
 
+#[derive(EnumString, Debug, PartialEq, Display, Copy, Clone)]
+pub enum Object {
+    #[strum(serialize = "contributor")]
+    Contributor,
+    #[strum(serialize = "dataset")]
+    Dataset,
+    #[strum(serialize = "network")]
+    Network,
+    #[strum(serialize = "commercial_mode")]
+    CommercialMode,
+    #[strum(serialize = "line")]
+    Line,
+    #[strum(serialize = "Route")]
+    Route,
+    #[strum(serialize = "vehicle_journey")]
+    VehicleJourney,
+    #[strum(serialize = "physical_mode")]
+    PhysicalMode,
+    #[strum(serialize = "stop_area")]
+    StopArea,
+    #[strum(serialize = "stop_point")]
+    StopPoint,
+    #[strum(serialize = "company")]
+    Company,
+    #[strum(serialize = "connection")]
+    Connection,
+}
+
 #[derive(Debug, PartialEq)]
 pub struct ToObject {
-    pub object: &'static str,
+    pub object: Object,
     pub expr: Expr,
 }
 
@@ -36,7 +64,7 @@ impl Expr {
     pub fn diff<L: Into<Self>, R: Into<Self>>(lhs: L, rhs: R) -> Self {
         Expr::Diff(Box::new(lhs.into()), Box::new(rhs.into()))
     }
-    pub fn to_object<T: Into<Self>>(object: &'static str, expr: T) -> Self {
+    pub fn to_object<T: Into<Self>>(object: Object, expr: T) -> Self {
         Expr::ToObject(Box::new(ToObject {
             object: object,
             expr: expr.into(),
@@ -58,12 +86,12 @@ impl From<Pred> for Expr {
 
 #[derive(Debug, PartialEq)]
 pub struct Fun {
-    pub obj: &'static str,
+    pub obj: Object,
     pub method: String,
     pub args: Vec<String>,
 }
 impl Fun {
-    pub fn new(obj: &'static str, method: &str, args: &[&str]) -> Self {
+    pub fn new(obj: Object, method: &str, args: &[&str]) -> Self {
         Fun {
             obj: obj,
             method: method.into(),
@@ -214,7 +242,7 @@ where
         one_of("_-.:;<>=|".chars()),
     ))))
 }
-fn object<I>() -> impl Parser<Input = I, Output = &'static str>
+fn object<I>() -> impl Parser<Input = I, Output = Object>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -232,7 +260,7 @@ where
         try(string("stop_point")),
         try(string("company")),
         try(string("connection")),
-    )))
+    ))).map(|s| s.parse().unwrap())
 }
 parser!{
     fn ident[I]()(I) -> String where [I: Stream<Item = char>]
@@ -263,6 +291,7 @@ parser!{
 
 #[cfg(test)]
 mod test {
+    use super::Object::*;
     use super::*;
 
     #[test]
@@ -307,42 +336,42 @@ mod test {
     fn test_fun() {
         assert_eq!(
             fun().easy_parse("line . a ( ) "),
-            Ok((Fun::new("line", "a", &[]), ""))
+            Ok((Fun::new(Line, "a", &[]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"vehicle_journey . has_code ( external_code , "OIF:42" ) "#),
             Ok((
-                Fun::new("vehicle_journey", "has_code", &["external_code", "OIF:42"]),
+                Fun::new(VehicleJourney, "has_code", &["external_code", "OIF:42"]),
                 ""
             ))
         );
         assert_eq!(
             fun().easy_parse(r#"stop_area . uri ( "OIF:42" ) "#),
-            Ok((Fun::new("stop_area", "uri", &["OIF:42"]), ""))
+            Ok((Fun::new(StopArea, "uri", &["OIF:42"]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"stop_area . uri = "OIF:42" "#),
-            Ok((Fun::new("stop_area", "uri", &["OIF:42"]), ""))
+            Ok((Fun::new(StopArea, "uri", &["OIF:42"]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"stop_area . uri = OIF:42 "#),
-            Ok((Fun::new("stop_area", "uri", &["OIF:42"]), ""))
+            Ok((Fun::new(StopArea, "uri", &["OIF:42"]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"stop_area . uri = foo "#),
-            Ok((Fun::new("stop_area", "uri", &["foo"]), ""))
+            Ok((Fun::new(StopArea, "uri", &["foo"]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"stop_area . uri = 42 "#),
-            Ok((Fun::new("stop_area", "uri", &["42"]), ""))
+            Ok((Fun::new(StopArea, "uri", &["42"]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"stop_area . uri = 1ee7_: "#),
-            Ok((Fun::new("stop_area", "uri", &["1ee7_:"]), ""))
+            Ok((Fun::new(StopArea, "uri", &["1ee7_:"]), ""))
         );
         assert_eq!(
             fun().easy_parse(r#"stop_point.within(42, -2.2;4.9e-2)"#),
-            Ok((Fun::new("stop_point", "within", &["42", "-2.2;4.9e-2"]), ""))
+            Ok((Fun::new(StopPoint, "within", &["42", "-2.2;4.9e-2"]), ""))
         );
     }
 
@@ -352,7 +381,7 @@ mod test {
         assert_eq!(pred().easy_parse("empty "), Ok((Pred::Empty, "")));
         assert_eq!(
             pred().easy_parse("line . a ( ) "),
-            Ok((Pred::Fun(Fun::new("line", "a", &[])), ""))
+            Ok((Pred::Fun(Fun::new(Line, "a", &[])), ""))
         );
     }
 
@@ -365,7 +394,7 @@ mod test {
         );
         assert_eq!(
             expr().easy_parse("line . a ( ) "),
-            Ok((Expr::Pred(Pred::Fun(Fun::new("line", "a", &[]))), ""))
+            Ok((Expr::Pred(Pred::Fun(Fun::new(Line, "a", &[]))), ""))
         );
     }
 
@@ -491,19 +520,16 @@ mod test {
 
         assert_eq!(
             expr().easy_parse("get line <- all "),
-            Ok((Expr::to_object("line", All), "")),
+            Ok((Expr::to_object(Line, All), "")),
         );
         assert_eq!(
             expr().easy_parse("get line <- get stop_area <- all "),
-            Ok((
-                Expr::to_object("line", Expr::to_object("stop_area", All)),
-                ""
-            )),
+            Ok((Expr::to_object(Line, Expr::to_object(StopArea, All)), "")),
         );
         assert_eq!(
             expr().easy_parse("get line <- empty and get stop_area <- all "),
             Ok((
-                Expr::to_object("line", Expr::and(Empty, Expr::to_object("stop_area", All))),
+                Expr::to_object(Line, Expr::and(Empty, Expr::to_object(StopArea, All))),
                 ""
             )),
         );

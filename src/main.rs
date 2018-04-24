@@ -3,13 +3,16 @@
 #[macro_use]
 extern crate combine;
 #[macro_use]
-extern crate structopt;
-#[macro_use]
 extern crate failure;
 extern crate humantime;
 extern crate navitia_model as ntm;
 extern crate serde;
 extern crate serde_json;
+#[macro_use]
+extern crate structopt;
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
 
 use ntm::collection::Collection;
 use ntm::relations::IdxSet;
@@ -47,12 +50,7 @@ fn run(opt: Opt) -> Result<()> {
     for cmd in stdin.lines() {
         let cmd = cmd?;
         match expr::parse(cmd.as_str()) {
-            Ok(expr) => dispatch!(
-                model,
-                expr.object,
-                |c| run_eval(&expr.expr, c, &model),
-                Ok(writeln!(io::stderr(), "unknown object {}", expr.object)?)
-            )?,
+            Ok(e) => dispatch!(model, e.object, |c| run_eval(&e.expr, c, &model))?,
             Err(e) => writeln!(io::stderr(), "{}", e)?,
         }
         prompt()?;

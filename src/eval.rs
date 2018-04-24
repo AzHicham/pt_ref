@@ -2,30 +2,26 @@ use expr;
 use ntm;
 use ntm::collection::{Collection, CollectionWithId, Id};
 use ntm::relations::IdxSet;
-
 use Result;
 
 macro_rules! dispatch {
-    ($model:expr, $obj:expr, $expr:expr) => {
-        dispatch!($model, $obj, $expr, Default::default())
-    };
-    ($model:expr, $obj:expr, $expr:expr, $default:expr) => {
+    ($model:expr, $obj:expr, $expr:expr) => {{
+        use $crate::expr::Object::*;
         match $obj {
-            "contributor" => $expr(&$model.contributors),
-            "dataset" => $expr(&$model.datasets),
-            "network" => $expr(&$model.networks),
-            "commercial_mode" => $expr(&$model.commercial_modes),
-            "line" => $expr(&$model.lines),
-            "route" => $expr(&$model.routes),
-            "vehicle_journey" => $expr(&$model.vehicle_journeys),
-            "physical_mode" => $expr(&$model.physical_modes),
-            "stop_area" => $expr(&$model.stop_areas),
-            "stop_point" => $expr(&$model.stop_points),
-            "company" => $expr(&$model.companies),
-            "connection" => $expr(&$model.transfers),
-            _ => $default,
+            Contributor => $expr(&$model.contributors),
+            Dataset => $expr(&$model.datasets),
+            Network => $expr(&$model.networks),
+            CommercialMode => $expr(&$model.commercial_modes),
+            Line => $expr(&$model.lines),
+            Route => $expr(&$model.routes),
+            VehicleJourney => $expr(&$model.vehicle_journeys),
+            PhysicalMode => $expr(&$model.physical_modes),
+            StopArea => $expr(&$model.stop_areas),
+            StopPoint => $expr(&$model.stop_points),
+            Company => $expr(&$model.companies),
+            Connection => $expr(&$model.transfers),
         }
-    };
+    }};
 }
 
 pub struct Eval<'a, T: 'a> {
@@ -54,12 +50,9 @@ impl<'a, T> Eval<'a, T> {
         Ok(res)
     }
     fn to_object(&self, o: &expr::ToObject) -> Result<IdxSet<T>> {
-        dispatch!(
-            self.model,
-            o.object,
-            |c| Ok(self.get_corresponding(&Eval::new(c, &self.model).expr(&o.expr)?)),
-            bail!("unknown object {}", o.object)
-        )
+        dispatch!(self.model, o.object, |c| Ok(self.get_corresponding(
+            &Eval::new(c, &self.model).expr(&o.expr)?
+        )))
     }
     fn pred(&self, p: &expr::Pred) -> Result<IdxSet<T>> {
         use expr::Pred::*;
@@ -70,34 +63,23 @@ impl<'a, T> Eval<'a, T> {
         }
     }
     fn fun(&self, f: &expr::Fun) -> Result<IdxSet<T>> {
+        use expr::Object::*;
         match (f.obj, f.method.as_str(), f.args.as_slice()) {
-            (_, "id", [arg]) | (_, "uri", [arg]) => self.id(&f.obj, arg),
-            (_, "has_code", [key, value]) => self.has_code(&f.obj, key, value),
-            ("line", "code", [arg]) => Ok(self.line_code(arg)),
-            ("stop_point", "within", [dist, coord]) => {
+            (_, "id", [arg]) | (_, "uri", [arg]) => self.id(f.obj, arg),
+            (_, "has_code", [key, value]) => self.has_code(f.obj, key, value),
+            (Line, "code", [arg]) => Ok(self.line_code(arg)),
+            (StopPoint, "within", [dist, coord]) => {
                 self.within(&self.model.stop_points, dist, coord)
             }
-            ("stop_area", "within", [dist, coord]) => {
-                self.within(&self.model.stop_areas, dist, coord)
-            }
-            _ => bail!("function {} is not supported, returning empty result", f),
+            (StopArea, "within", [dist, coord]) => self.within(&self.model.stop_areas, dist, coord),
+            _ => bail!("function {} is not supported", f),
         }
     }
-    fn id(&self, obj: &str, id: &str) -> Result<IdxSet<T>> {
-        dispatch!(
-            self.model,
-            obj,
-            |c| self.get_from_id(c, id),
-            bail!("unknown object {}", obj)
-        )
+    fn id(&self, obj: expr::Object, id: &str) -> Result<IdxSet<T>> {
+        dispatch!(self.model, obj, |c| self.get_from_id(c, id))
     }
-    fn has_code(&self, obj: &str, key: &str, value: &str) -> Result<IdxSet<T>> {
-        dispatch!(
-            self.model,
-            obj,
-            |c| self.get_from_code(c, key, value),
-            bail!("unknown object {}", obj)
-        )
+    fn has_code(&self, obj: expr::Object, key: &str, value: &str) -> Result<IdxSet<T>> {
+        dispatch!(self.model, obj, |c| self.get_from_code(c, key, value))
     }
     fn line_code(&self, code: &str) -> IdxSet<T> {
         let code = Some(code.to_string());
