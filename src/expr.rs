@@ -142,7 +142,7 @@ where
     choice((
         between(lex(char('(')), lex(char(')')), expr()),
         pred().map(Expr::Pred),
-        expr(),
+        to_object().map(|o| Expr::ToObject(Box::new(o))),
     ))
 }
 parser!{
@@ -533,5 +533,6 @@ mod test {
                 ""
             )),
         );
+        assert!(expr().easy_parse("get line <- foo").is_err());
     }
 }
