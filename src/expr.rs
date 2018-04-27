@@ -289,7 +289,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     between(
-        lex(char('"')),
+        char('"'),
         lex(char('"')),
         many(choice((
             none_of("\\\"".chars()),
@@ -317,6 +317,10 @@ mod test {
         assert_eq!(
             quoted_str().easy_parse(r#""\\"   "#),
             Ok(("\\".to_string(), ""))
+        );
+        assert_eq!(
+            quoted_str().easy_parse(r#""  ""#),
+            Ok(("  ".to_string(), ""))
         );
         assert!(quoted_str().easy_parse(r#""\a""#).is_err());
         assert!(quoted_str().easy_parse(r#"""#).is_err());
