@@ -24,7 +24,7 @@ pub enum Object {
     CommercialMode,
     #[strum(serialize = "line")]
     Line,
-    #[strum(serialize = "Route")]
+    #[strum(serialize = "route")]
     Route,
     #[strum(serialize = "vehicle_journey")]
     VehicleJourney,
@@ -302,6 +302,23 @@ where
 mod test {
     use super::Object::*;
     use super::*;
+
+    #[test]
+    fn test_object() {
+        assert_eq!(object().easy_parse("contributor "), Ok((Contributor, "")));
+        assert_eq!(object().easy_parse("dataset "), Ok((Dataset, "")));
+        assert_eq!(object().easy_parse("network "), Ok((Network, "")));
+        assert_eq!(object().easy_parse("commercial_mode "), Ok((CommercialMode, "")));
+        assert_eq!(object().easy_parse("line "), Ok((Line, "")));
+        assert_eq!(object().easy_parse("route "), Ok((Route, "")));
+        assert_eq!(object().easy_parse("vehicle_journey "), Ok((VehicleJourney, "")));
+        assert_eq!(object().easy_parse("physical_mode "), Ok((PhysicalMode, "")));
+        assert_eq!(object().easy_parse("stop_area "), Ok((StopArea, "")));
+        assert_eq!(object().easy_parse("stop_point "), Ok((StopPoint, "")));
+        assert_eq!(object().easy_parse("company "), Ok((Company, "")));
+        assert_eq!(object().easy_parse("connection "), Ok((Connection, "")));
+        assert!(object().easy_parse("commerical_mode ").is_err());
+    }
 
     #[test]
     fn test_quoted_str() {
