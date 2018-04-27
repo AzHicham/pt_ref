@@ -202,6 +202,7 @@ where
         fun().map(Pred::Fun),
     ))
 }
+
 fn fun<I>() -> impl Parser<Input = I, Output = Fun>
 where
     I: Stream<Item = char>,
@@ -224,13 +225,16 @@ where
             method: t.2,
             args: t.3,
         })
-        .skip(spaces())
 }
-parser!{
-    fn my_str[I]()(I) -> String where [I: Stream<Item = char>] {
-        quoted_str().or(lazy_str())
-    }
+
+fn my_str<I>() -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    quoted_str().or(lazy_str())
 }
+
 fn lazy_str<I>() -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
@@ -242,6 +246,7 @@ where
         one_of("_-.:;<>=|".chars()),
     ))))
 }
+
 fn object<I>() -> impl Parser<Input = I, Output = Object>
 where
     I: Stream<Item = char>,
@@ -262,31 +267,35 @@ where
         try(string("connection")),
     ))).map(|s| s.parse().unwrap())
 }
-parser!{
-    fn ident[I]()(I) -> String where [I: Stream<Item = char>]
-    {
-        lex(recognize((
+
+fn ident<I>() -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(recognize((
+        letter(),
+        skip_many(choice((
             letter(),
-            skip_many(choice((
-                letter(),
-                digit(),
-                one_of("_:".chars()),
-            ))),
-        )))
-    }
+            digit(),
+            one_of("_:".chars()),
+        ))),
+    )))
 }
-parser!{
-    fn quoted_str[I]()(I) -> String where [I: Stream<Item = char>]
-    {
-        between(
-            lex(char('"')),
-            lex(char('"')),
-            many(choice((
-                none_of("\\\"".chars()),
-                char('\\').with(one_of("\\\"".chars())),
-            )))
-        )
-    }
+
+fn quoted_str<I>() -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    between(
+        lex(char('"')),
+        lex(char('"')),
+        many(choice((
+            none_of("\\\"".chars()),
+            char('\\').with(one_of("\\\"".chars())),
+        )))
+    )
 }
 
 #[cfg(test)]
