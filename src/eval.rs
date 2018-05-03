@@ -99,7 +99,8 @@ impl<'a, T> Eval<'a, T> {
     where
         U: Coord,
     {
-        let distance = distance.parse()?;
+        let distance: f64 = distance.parse()?;
+        let sq_distance = distance * distance;
         let split = coord
             .find(';')
             .ok_or_else(|| format_err!("invalid coord: no `;`"))?;
@@ -107,9 +108,11 @@ impl<'a, T> Eval<'a, T> {
             lon: coord[..split].parse()?,
             lat: coord[split + 1..].parse()?,
         };
+        let approx = Approx::new(&coord);
         let from = collection
             .iter()
-            .filter(|(_, sp)| sp.coord().distance_to(&coord) <= distance)
+            .filter(|(_, sp)| approx.sq_distance_to(sp.coord()) <= sq_distance)
+            //.filter(|(_, sp)| coord.distance_to(sp.coord()) <= distance)
             .map(|(idx, _)| idx)
             .collect();
         Ok(self.get_corresponding(&from))
@@ -169,8 +172,32 @@ impl<'a, T, U> GetFromCode<T, U> for Eval<'a, U> {
     }
 }
 
-trait Coord {
+pub struct Approx {
+    cos_lat: f64,
+    lon_rad: f64,
+    lat_rad: f64,
+}
+impl Approx {
+    pub fn new(&ntm::objects::Coord { lon, lat }: &ntm::objects::Coord) -> Self {
+        let lat_rad = lat.to_radians();
+        Approx {
+            cos_lat: lat_rad.cos(),
+            lon_rad: lon.to_radians(),
+            lat_rad,
+        }
+    }
+    pub fn sq_distance_to(&self, coord: &ntm::objects::Coord) -> f64 {
+        fn sq(f: f64) -> f64 { f * f }
+        let delta_lat = self.lat_rad - coord.lat.to_radians();
+        let delta_lon = self.lon_rad - coord.lon.to_radians();
+        sq(6_371_000.) * (sq(delta_lat) + sq(self.cos_lat * delta_lon))
+    }
+}
+pub trait Coord {
     fn coord(&self) -> &ntm::objects::Coord;
+    fn approx(&self) -> Approx {
+        Approx::new(self.coord())
+    }
 }
 impl Coord for ntm::objects::StopPoint {
     fn coord(&self) -> &ntm::objects::Coord {
