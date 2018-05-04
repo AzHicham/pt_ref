@@ -7,7 +7,7 @@ authors = ["Guillaume Pinot <texitoi@texitoi.eu>"]
 combine = "3"
 structopt = "0.2"
 failure = "0.1"
-navitia_model = { git = "https://github.com/TeXitoi/navitia_model.git", branch = "approx-distance" }
+navitia_model = { git = "https://github.com/CanalTP/navitia_model.git" }
 serde_json = "1"
 serde = "1"
 humantime = "1"
