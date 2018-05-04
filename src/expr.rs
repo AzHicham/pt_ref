@@ -221,10 +221,10 @@ where
             lex(char('=')).with(my_str()).map(|s| vec![s]),
         )),
     ).map(|t| Fun {
-            obj: t.0,
-            method: t.2,
-            args: t.3,
-        })
+        obj: t.0,
+        method: t.2,
+        args: t.3,
+    })
 }
 
 fn my_str<I>() -> impl Parser<Input = I, Output = String>
@@ -275,11 +275,7 @@ where
 {
     lex(recognize((
         letter(),
-        skip_many(choice((
-            letter(),
-            digit(),
-            one_of("_:".chars()),
-        ))),
+        skip_many(choice((letter(), digit(), one_of("_:".chars())))),
     )))
 }
 
@@ -294,7 +290,7 @@ where
         many(choice((
             none_of("\\\"".chars()),
             char('\\').with(one_of("\\\"".chars())),
-        )))
+        ))),
     )
 }
 
@@ -308,11 +304,20 @@ mod test {
         assert_eq!(object().easy_parse("contributor "), Ok((Contributor, "")));
         assert_eq!(object().easy_parse("dataset "), Ok((Dataset, "")));
         assert_eq!(object().easy_parse("network "), Ok((Network, "")));
-        assert_eq!(object().easy_parse("commercial_mode "), Ok((CommercialMode, "")));
+        assert_eq!(
+            object().easy_parse("commercial_mode "),
+            Ok((CommercialMode, ""))
+        );
         assert_eq!(object().easy_parse("line "), Ok((Line, "")));
         assert_eq!(object().easy_parse("route "), Ok((Route, "")));
-        assert_eq!(object().easy_parse("vehicle_journey "), Ok((VehicleJourney, "")));
-        assert_eq!(object().easy_parse("physical_mode "), Ok((PhysicalMode, "")));
+        assert_eq!(
+            object().easy_parse("vehicle_journey "),
+            Ok((VehicleJourney, ""))
+        );
+        assert_eq!(
+            object().easy_parse("physical_mode "),
+            Ok((PhysicalMode, ""))
+        );
         assert_eq!(object().easy_parse("stop_area "), Ok((StopArea, "")));
         assert_eq!(object().easy_parse("stop_point "), Ok((StopPoint, "")));
         assert_eq!(object().easy_parse("company "), Ok((Company, "")));
