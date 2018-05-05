@@ -66,7 +66,10 @@ where
         let idx_set = match eval::Eval::new(collection, model).run(expr) {
             Ok(set) => set,
             Err(e) => {
-                write!(io::stderr(), "Error: {}", e)?;
+                for cause in e.causes() {
+                    writeln!(io::stderr(), "{}", cause)?;
+                }
+                write!(io::stderr(), "Expression not evaluated")?;
                 return Ok(());
             }
         };

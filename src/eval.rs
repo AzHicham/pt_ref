@@ -1,4 +1,5 @@
 use expr;
+use failure::ResultExt;
 use ntm;
 use ntm::collection::{Collection, CollectionWithId, Id};
 use ntm::relations::IdxSet;
@@ -59,7 +60,9 @@ impl<'a, T> Eval<'a, T> {
         match p {
             All => Ok(self.all()),
             Empty => Ok(IdxSet::default()),
-            Fun(f) => self.fun(f),
+            Fun(f) => self.fun(f)
+                .with_context(|_| format!("Error while evaluating {}", f))
+                .map_err(|e| e.into()),
         }
     }
     fn fun(&self, f: &expr::Fun) -> Result<IdxSet<T>> {
