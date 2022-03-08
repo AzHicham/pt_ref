@@ -1,8 +1,10 @@
-use combine::parser::char::{char, digit, letter, spaces, string};
-use combine::parser::combinator::recognize;
 use combine::{
-    between, choice, easy, eof, many, many1, none_of, one_of, optional, sep_by, skip_many, stream,
-    EasyParser, ParseError, Parser, Stream,
+    between, choice, easy, eof, many, many1, none_of, one_of, optional,
+    parser::{
+        char::{char, digit, letter, spaces, string},
+        combinator::recognize,
+    },
+    sep_by, skip_many, stream, EasyParser, ParseError, Parser, Stream,
 };
 use expr::stream::position::SourcePosition;
 
@@ -298,8 +300,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::Object::*;
-    use super::*;
+    use super::{Object::*, *};
 
     #[test]
     fn test_object() {

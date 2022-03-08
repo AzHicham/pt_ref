@@ -16,8 +16,10 @@ extern crate strum_macros;
 extern crate relational_types;
 
 use relational_types::IdxSet;
-use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
+use std::{
+    io::{self, BufRead, Write},
+    path::PathBuf,
+};
 use structopt::StructOpt;
 use typed_index_collection::Collection;
 
