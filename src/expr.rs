@@ -96,7 +96,7 @@ pub struct Fun {
 impl Fun {
     pub fn new(obj: Object, method: &str, args: &[&str]) -> Self {
         Fun {
-            obj: obj,
+            obj,
             method: method.into(),
             args: args.iter().map(|s| s.to_string()).collect(),
         }

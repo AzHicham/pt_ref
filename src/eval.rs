@@ -43,7 +43,7 @@ impl<'a, T> Eval<'a, T> {
         use expr::Expr::*;
         let res = match e {
             Pred(p) => self.pred(p)?,
-            ToObject(o) => self.to_object(&o)?,
+            ToObject(o) => self.to_object(o)?,
             And(l, r) => &self.expr(l)? & &self.expr(r)?,
             Or(l, r) => &self.expr(l)? | &self.expr(r)?,
             Diff(l, r) => &self.expr(l)? - &self.expr(r)?,
@@ -52,7 +52,7 @@ impl<'a, T> Eval<'a, T> {
     }
     fn to_object(&self, o: &expr::ToObject) -> Result<IdxSet<T>> {
         dispatch!(self.model, o.object, |c| Ok(
-            self.get_corresponding(&Eval::new(c, &self.model).expr(&o.expr)?)
+            self.get_corresponding(&Eval::new(c, self.model).expr(&o.expr)?)
         ))
     }
     fn pred(&self, p: &expr::Pred) -> Result<IdxSet<T>> {

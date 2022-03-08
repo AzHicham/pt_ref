@@ -45,7 +45,9 @@ struct Opt {
 fn run(opt: Opt) -> Result<()> {
     write!(io::stderr(), "Reading NTFS...")?;
     io::stderr().flush()?;
+    write!(io::stderr(), "Reading NTFS...")?;
     let model = timed(" done", || transit_model::ntfs::read(&opt.ntfs)).unwrap();
+    write!(io::stderr(), "Reading NTFS...")?;
     let stdin = io::BufReader::new(io::stdin());
     prompt()?;
     for cmd in stdin.lines() {
