@@ -17,7 +17,7 @@ jobs:
       with:
         submodules: 'recursive'
     - name: Check compilation
-      run: cargo check --workspace --verbose
+      run: cargo +nightly check --workspace --verbose
 
   build:
     runs-on: ubuntu-latest
@@ -35,5 +35,5 @@ jobs:
       with:
         key: ${{ matrix.build_type.name }}
     - name: Build & Test
-      run: cargo test --workspace ${{ matrix.build_type.flag }}
+      run: cargo +nightly test --workspace ${{ matrix.build_type.flag }}
 
