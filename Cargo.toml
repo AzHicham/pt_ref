@@ -15,3 +15,14 @@ serde = "1"
 humantime = "2"
 strum = "0.24"
 strum_macros = "0.24"
+
+[profile.dev]
+opt-level = 1
+codegen-units = 16
+
+[profile.release]
+opt-level = 3
+debug = true
+lto = true
+codegen-units = 1
+panic = 'unwind'
