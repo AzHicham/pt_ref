@@ -1,18 +1,17 @@
 use combine::parser::char::{char, digit, letter, spaces, string};
 use combine::parser::combinator::recognize;
 use combine::{
-    between, choice, easy, eof, many, many1, none_of, one_of, sep_by, skip_many, stream,
-    EasyParser, ParseError, Parser, Stream, StreamOnce,
+    between, choice, easy, eof, many, many1, none_of, one_of, optional, sep_by, skip_many, stream,
+    EasyParser, ParseError, Parser, Stream,
 };
 use expr::stream::position::SourcePosition;
-use serde_json::ser::State;
 
 pub type Error<'a> = easy::Errors<char, &'a str, SourcePosition>;
 
 pub fn parse(s: &str) -> Result<ToObject, Error> {
     spaces()
         .with(to_object().skip(eof()))
-        .easy_parse(State::new(s))
+        .easy_parse(combine::stream::position::Stream::new(s))
         .map(|res| res.0)
 }
 
@@ -70,7 +69,7 @@ impl Expr {
     }
     pub fn to_object<T: Into<Self>>(object: Object, expr: T) -> Self {
         Expr::ToObject(Box::new(ToObject {
-            object: object,
+            object,
             expr: expr.into(),
         }))
     }
@@ -115,9 +114,11 @@ impl ::std::fmt::Display for Fun {
     }
 }
 
-fn lex<I>(p: I) -> impl Parser<I, Output>
+fn lex<P, I>(p: P) -> impl Parser<I, Output = P::Output>
 where
+    P: Parser<I>,
     I: Stream<Token = char>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     p.skip(spaces())
 }
@@ -125,7 +126,7 @@ where
 fn to_object<I>() -> impl Parser<I, Output = ToObject>
 where
     I: Stream<Token = char>,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (lex(string("get")), object(), lex(string("<-")), expr()).map(|t| ToObject {
         object: t.1,
@@ -136,7 +137,7 @@ where
 fn expr_leaf<I>() -> impl Parser<I, Output = Expr>
 where
     I: Stream<Token = char>,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     choice((
         between(lex(char('(')), lex(char(')')), expr()),
@@ -145,7 +146,7 @@ where
     ))
 }
 parser! {
-    fn expr_diff[I]()(I) -> Expr where [I: Stream]
+    fn expr_diff[I]()(I) -> Expr where [I: Stream<Token = char>]
     {
         (
             expr_leaf(),
@@ -157,7 +158,7 @@ parser! {
     }
 }
 parser! {
-    fn expr_and[I]()(I) -> Expr where [I: Stream]
+    fn expr_and[I]()(I) -> Expr where [I: Stream<Token = char>]
     {
         (
             expr_diff(),
@@ -169,7 +170,7 @@ parser! {
     }
 }
 parser! {
-    fn expr_or[I]()(I) -> Expr where [I: Stream]
+    fn expr_or[I]()(I) -> Expr where [I: Stream<Token = char>]
     {
         (
             expr_and(),
@@ -181,7 +182,7 @@ parser! {
     }
 }
 parser! {
-    fn expr[I]()(I) -> Expr where [I: Stream]
+    fn expr[I]()(I) -> Expr where [I: Stream<Token = char>]
     {
         choice((
             to_object().map(|t| Expr::ToObject(Box::new(t))),
@@ -192,8 +193,8 @@ parser! {
 
 fn pred<I>() -> impl Parser<I, Output = Pred>
 where
-    I: Stream,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     choice((
         lex(string("all")).map(|_| Pred::All),
@@ -204,8 +205,8 @@ where
 
 fn fun<I>() -> impl Parser<I, Output = Fun>
 where
-    I: Stream,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         object(),
@@ -230,15 +231,15 @@ where
 fn my_str<I>() -> impl Parser<I, Output = String>
 where
     I: Stream<Token = char>,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     quoted_str().or(lazy_str())
 }
 
 fn lazy_str<I>() -> impl Parser<I, Output = String>
 where
-    I: Stream,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     lex(many1(choice((
         letter(),
@@ -249,8 +250,8 @@ where
 
 fn object<I>() -> impl Parser<I, Output = Object>
 where
-    I: Stream,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     lex(choice((
         string("contributor"),
@@ -271,8 +272,8 @@ where
 
 fn ident<I>() -> impl Parser<I, Output = String>
 where
-    I: Stream,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     lex(recognize((
         letter(),
@@ -283,7 +284,7 @@ where
 fn quoted_str<I>() -> impl Parser<I, Output = String>
 where
     I: Stream<Token = char>,
-    I::Error: ParseError<I, I::Range, I::Position>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     between(
         char('"'),

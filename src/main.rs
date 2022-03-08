@@ -7,11 +7,10 @@ extern crate failure;
 extern crate humantime;
 extern crate serde;
 extern crate serde_json;
-extern crate transit_model;
-extern crate typed_index_collection;
-#[macro_use]
 extern crate structopt;
 extern crate strum;
+extern crate transit_model;
+extern crate typed_index_collection;
 #[macro_use]
 extern crate strum_macros;
 extern crate relational_types;
@@ -30,7 +29,7 @@ pub mod expr;
 
 fn main() {
     if let Err(err) = run(Opt::from_args()) {
-        for cause in err.causes() {
+        for cause in err.iter_chain() {
             eprintln!("{}", cause);
         }
         std::process::exit(1);
@@ -46,7 +45,7 @@ struct Opt {
 fn run(opt: Opt) -> Result<()> {
     write!(io::stderr(), "Reading NTFS...")?;
     io::stderr().flush()?;
-    let model = timed(" done", || transit_model::ntfs::read(&opt.ntfs))?;
+    let model = timed(" done", || transit_model::ntfs::read(&opt.ntfs)).unwrap();
     let stdin = io::BufReader::new(io::stdin());
     prompt()?;
     for cmd in stdin.lines() {
@@ -72,7 +71,7 @@ where
         let idx_set = match eval::Eval::new(collection, model).run(expr) {
             Ok(set) => set,
             Err(e) => {
-                for cause in e.causes() {
+                for cause in e.iter_chain() {
                     writeln!(io::stderr(), "{}", cause)?;
                 }
                 write!(io::stderr(), "Expression not evaluated")?;
