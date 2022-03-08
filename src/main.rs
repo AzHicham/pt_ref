@@ -5,20 +5,22 @@ extern crate combine;
 #[macro_use]
 extern crate failure;
 extern crate humantime;
-extern crate navitia_model as ntm;
 extern crate serde;
 extern crate serde_json;
+extern crate transit_model;
+extern crate typed_index_collection;
 #[macro_use]
 extern crate structopt;
 extern crate strum;
 #[macro_use]
 extern crate strum_macros;
+extern crate relational_types;
 
-use ntm::collection::Collection;
-use ntm::relations::IdxSet;
+use relational_types::IdxSet;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use typed_index_collection::Collection;
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -44,7 +46,7 @@ struct Opt {
 fn run(opt: Opt) -> Result<()> {
     write!(io::stderr(), "Reading NTFS...")?;
     io::stderr().flush()?;
-    let model = timed(" done", || ntm::ntfs::read(&opt.ntfs))?;
+    let model = timed(" done", || transit_model::ntfs::read(&opt.ntfs))?;
     let stdin = io::BufReader::new(io::stdin());
     prompt()?;
     for cmd in stdin.lines() {
@@ -58,7 +60,11 @@ fn run(opt: Opt) -> Result<()> {
     Ok(())
 }
 
-fn run_eval<T>(expr: &expr::Expr, collection: &Collection<T>, model: &ntm::Model) -> Result<()>
+fn run_eval<T>(
+    expr: &expr::Expr,
+    collection: &Collection<T>,
+    model: &transit_model::Model,
+) -> Result<()>
 where
     T: serde::Serialize,
 {

@@ -1,8 +1,8 @@
 use expr;
 use failure::ResultExt;
-use ntm;
-use ntm::collection::{Collection, CollectionWithId, Id};
-use ntm::relations::IdxSet;
+use relational_types::IdxSet;
+use transit_model::Model;
+use typed_index_collection::{Collection, CollectionWithId, Id};
 use Result;
 
 macro_rules! dispatch {
@@ -26,11 +26,11 @@ macro_rules! dispatch {
 }
 
 pub struct Eval<'a, T: 'a> {
-    model: &'a ntm::Model,
+    model: &'a Model,
     target: &'a Collection<T>,
 }
 impl<'a, T> Eval<'a, T> {
-    pub fn new(target: &'a Collection<T>, model: &'a ntm::Model) -> Self {
+    pub fn new(target: &'a Collection<T>, model: &'a Model) -> Self {
         Eval { target, model }
     }
     pub fn run(&self, e: &expr::Expr) -> Result<IdxSet<T>> {
@@ -51,16 +51,17 @@ impl<'a, T> Eval<'a, T> {
         Ok(res)
     }
     fn to_object(&self, o: &expr::ToObject) -> Result<IdxSet<T>> {
-        dispatch!(self.model, o.object, |c| Ok(self.get_corresponding(
-            &Eval::new(c, &self.model).expr(&o.expr)?
-        )))
+        dispatch!(self.model, o.object, |c| Ok(
+            self.get_corresponding(&Eval::new(c, &self.model).expr(&o.expr)?)
+        ))
     }
     fn pred(&self, p: &expr::Pred) -> Result<IdxSet<T>> {
         use expr::Pred::*;
         match p {
             All => Ok(self.all()),
             Empty => Ok(IdxSet::default()),
-            Fun(f) => self.fun(f)
+            Fun(f) => self
+                .fun(f)
                 .with_context(|_| format!("Error while evaluating {}", f))
                 .map_err(|e| e.into()),
         }
@@ -86,7 +87,8 @@ impl<'a, T> Eval<'a, T> {
     }
     fn line_code(&self, code: &str) -> IdxSet<T> {
         let code = Some(code.to_string());
-        let lines = self.model
+        let lines = self
+            .model
             .lines
             .iter()
             .filter_map(|(idx, l)| if l.code == code { Some(idx) } else { None })
@@ -107,7 +109,7 @@ impl<'a, T> Eval<'a, T> {
         let split = coord
             .find(';')
             .ok_or_else(|| format_err!("invalid coord: no `;`"))?;
-        let coord = ::ntm::objects::Coord {
+        let coord = transit_model::objects::Coord {
             lon: coord[..split].parse()?,
             lat: coord[split + 1..].parse()?,
         };
@@ -122,16 +124,17 @@ impl<'a, T> Eval<'a, T> {
 }
 
 trait GetCorresponding<T, U> {
-    fn get_corresponding(&self, &IdxSet<T>) -> IdxSet<U>;
+    fn get_corresponding(&self, from: &IdxSet<T>) -> IdxSet<U>;
 }
 impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U> {
-    default fn get_corresponding(&self, _: &IdxSet<T>) -> IdxSet<U> {
+    default fn get_corresponding(&self, _from: &IdxSet<T>) -> IdxSet<U> {
         Default::default()
     }
 }
+
 impl<'a, T, U> GetCorresponding<T, U> for Eval<'a, U>
 where
-    IdxSet<T>: ntm::model::GetCorresponding<U>,
+    IdxSet<T>: transit_model::model::GetCorresponding<U>,
 {
     fn get_corresponding(&self, from: &IdxSet<T>) -> IdxSet<U> {
         self.model.get_corresponding(from)
@@ -153,15 +156,16 @@ impl<'a, T, U> GetFromId<Collection<T>, U> for Eval<'a, U> {
 }
 
 trait GetFromCode<T, U> {
-    fn get_from_code(&self, &Collection<T>, &str, &str) -> Result<IdxSet<U>>;
+    fn get_from_code(&self, objs: &Collection<T>, key: &str, value: &str) -> Result<IdxSet<U>>;
 }
 impl<'a, T, U> GetFromCode<T, U> for Eval<'a, U>
 where
-    T: ntm::objects::Codes,
+    T: transit_model::objects::Codes,
 {
     fn get_from_code(&self, objs: &Collection<T>, key: &str, value: &str) -> Result<IdxSet<U>> {
         let code = (key.to_string(), value.to_string());
-        let from = objs.iter()
+        let from = objs
+            .iter()
             .filter(|&(_, obj)| obj.codes().contains(&code))
             .map(|(idx, _)| idx)
             .collect();
@@ -175,15 +179,15 @@ impl<'a, T, U> GetFromCode<T, U> for Eval<'a, U> {
 }
 
 pub trait Coord {
-    fn coord(&self) -> &ntm::objects::Coord;
+    fn coord(&self) -> &transit_model::objects::Coord;
 }
-impl Coord for ntm::objects::StopPoint {
-    fn coord(&self) -> &ntm::objects::Coord {
+impl Coord for transit_model::objects::StopPoint {
+    fn coord(&self) -> &transit_model::objects::Coord {
         &self.coord
     }
 }
-impl Coord for ntm::objects::StopArea {
-    fn coord(&self) -> &ntm::objects::Coord {
+impl Coord for transit_model::objects::StopArea {
+    fn coord(&self) -> &transit_model::objects::Coord {
         &self.coord
     }
 }

@@ -1,11 +1,15 @@
-use combine::combinator::recognize;
-use combine::parser::char::*;
-use combine::stream::state::State;
-use combine::*;
+use combine::parser::char::{char, digit, letter, spaces, string};
+use combine::parser::combinator::recognize;
+use combine::{
+    between, choice, easy, eof, many, many1, none_of, one_of, sep_by, skip_many, stream,
+    EasyParser, ParseError, Parser, Stream, StreamOnce,
+};
+use expr::stream::position::SourcePosition;
+use serde_json::ser::State;
 
-pub type Error<'a> = easy::Errors<char, &'a str, stream::state::SourcePosition>;
+pub type Error<'a> = easy::Errors<char, &'a str, SourcePosition>;
 
-pub fn parse<'a>(s: &'a str) -> Result<ToObject, Error<'a>> {
+pub fn parse(s: &str) -> Result<ToObject, Error> {
     spaces()
         .with(to_object().skip(eof()))
         .easy_parse(State::new(s))
@@ -101,32 +105,27 @@ impl Fun {
 }
 impl ::std::fmt::Display for Fun {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-        let args = self.args
+        let args = self
+            .args
             .iter()
             .map(|a| format!("{:?}", a))
             .collect::<Vec<_>>()
             .join(", ");
-        write!(f, "{}.{}({})", self.obj, self.method, args)
+        write!(f, "{:?}.{}({})", self.obj, self.method, args)
     }
 }
 
-fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
+fn lex<I>(p: I) -> impl Parser<I, Output>
 where
-    P: Parser,
-    P::Input: Stream<Item = char>,
-    <P::Input as StreamOnce>::Error: ParseError<
-        <P::Input as StreamOnce>::Item,
-        <P::Input as StreamOnce>::Range,
-        <P::Input as StreamOnce>::Position,
-    >,
+    I: Stream<Token = char>,
 {
     p.skip(spaces())
 }
 
-fn to_object<I>() -> impl Parser<Input = I, Output = ToObject>
+fn to_object<I>() -> impl Parser<I, Output = ToObject>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     (lex(string("get")), object(), lex(string("<-")), expr()).map(|t| ToObject {
         object: t.1,
@@ -134,10 +133,10 @@ where
     })
 }
 
-fn expr_leaf<I>() -> impl Parser<Input = I, Output = Expr>
+fn expr_leaf<I>() -> impl Parser<I, Output = Expr>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     choice((
         between(lex(char('(')), lex(char(')')), expr()),
@@ -145,8 +144,8 @@ where
         to_object().map(|o| Expr::ToObject(Box::new(o))),
     ))
 }
-parser!{
-    fn expr_diff[I]()(I) -> Expr where [I: Stream<Item=char>]
+parser! {
+    fn expr_diff[I]()(I) -> Expr where [I: Stream]
     {
         (
             expr_leaf(),
@@ -157,8 +156,8 @@ parser!{
         })
     }
 }
-parser!{
-    fn expr_and[I]()(I) -> Expr where [I: Stream<Item=char>]
+parser! {
+    fn expr_and[I]()(I) -> Expr where [I: Stream]
     {
         (
             expr_diff(),
@@ -169,8 +168,8 @@ parser!{
         })
     }
 }
-parser!{
-    fn expr_or[I]()(I) -> Expr where [I: Stream<Item=char>]
+parser! {
+    fn expr_or[I]()(I) -> Expr where [I: Stream]
     {
         (
             expr_and(),
@@ -181,8 +180,8 @@ parser!{
         })
     }
 }
-parser!{
-    fn expr[I]()(I) -> Expr where [I: Stream<Item=char>]
+parser! {
+    fn expr[I]()(I) -> Expr where [I: Stream]
     {
         choice((
             to_object().map(|t| Expr::ToObject(Box::new(t))),
@@ -191,10 +190,10 @@ parser!{
     }
 }
 
-fn pred<I>() -> impl Parser<Input = I, Output = Pred>
+fn pred<I>() -> impl Parser<I, Output = Pred>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     choice((
         lex(string("all")).map(|_| Pred::All),
@@ -203,10 +202,10 @@ where
     ))
 }
 
-fn fun<I>() -> impl Parser<Input = I, Output = Fun>
+fn fun<I>() -> impl Parser<I, Output = Fun>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     (
         object(),
@@ -220,25 +219,26 @@ where
             ),
             lex(char('=')).with(my_str()).map(|s| vec![s]),
         )),
-    ).map(|t| Fun {
-        obj: t.0,
-        method: t.2,
-        args: t.3,
-    })
+    )
+        .map(|t| Fun {
+            obj: t.0,
+            method: t.2,
+            args: t.3,
+        })
 }
 
-fn my_str<I>() -> impl Parser<Input = I, Output = String>
+fn my_str<I>() -> impl Parser<I, Output = String>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     quoted_str().or(lazy_str())
 }
 
-fn lazy_str<I>() -> impl Parser<Input = I, Output = String>
+fn lazy_str<I>() -> impl Parser<I, Output = String>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     lex(many1(choice((
         letter(),
@@ -247,31 +247,32 @@ where
     ))))
 }
 
-fn object<I>() -> impl Parser<Input = I, Output = Object>
+fn object<I>() -> impl Parser<I, Output = Object>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     lex(choice((
-        try(string("contributor")),
-        try(string("dataset")),
-        try(string("network")),
-        try(string("commercial_mode")),
-        try(string("line")),
-        try(string("route")),
-        try(string("vehicle_journey")),
-        try(string("physical_mode")),
-        try(string("stop_area")),
-        try(string("stop_point")),
-        try(string("company")),
-        try(string("connection")),
-    ))).map(|s| s.parse().unwrap())
+        string("contributor"),
+        string("dataset"),
+        string("network"),
+        string("commercial_mode"),
+        string("line"),
+        string("route"),
+        string("vehicle_journey"),
+        string("physical_mode"),
+        string("stop_area"),
+        string("stop_point"),
+        string("company"),
+        string("connection"),
+    )))
+    .map(|s| s.parse().unwrap())
 }
 
-fn ident<I>() -> impl Parser<Input = I, Output = String>
+fn ident<I>() -> impl Parser<I, Output = String>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     lex(recognize((
         letter(),
@@ -279,10 +280,10 @@ where
     )))
 }
 
-fn quoted_str<I>() -> impl Parser<Input = I, Output = String>
+fn quoted_str<I>() -> impl Parser<I, Output = String>
 where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Token = char>,
+    I::Error: ParseError<I, I::Range, I::Position>,
 {
     between(
         char('"'),
