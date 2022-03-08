@@ -1,0 +1,39 @@
+name: Build and test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - name: Check compilation
+      run: cargo check --workspace --verbose
+
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+        fail-fast: false
+        matrix:
+                build_type: [{name: "Release", flag: "--release"}, {name: "Debug", flag: ""}]
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - uses: Swatinem/rust-cache@v1
+      with:
+        key: ${{ matrix.build_type.name }}
+    - name: Build & Test
+      run: cargo test --workspace ${{ matrix.build_type.flag }}
+

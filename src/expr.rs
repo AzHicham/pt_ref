@@ -1,5 +1,5 @@
 use combine::{
-    between, choice, easy, eof, many, many1, none_of, one_of, optional,
+    attempt, between, choice, easy, eof, many, many1, none_of, one_of, optional,
     parser::{
         char::{char, digit, letter, spaces, string},
         combinator::recognize,
@@ -255,21 +255,22 @@ where
     I: Stream<Token = char>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
+    use std::str::FromStr;
     lex(choice((
-        string("contributor"),
-        string("dataset"),
-        string("network"),
-        string("commercial_mode"),
-        string("line"),
-        string("route"),
-        string("vehicle_journey"),
-        string("physical_mode"),
-        string("stop_area"),
-        string("stop_point"),
-        string("company"),
-        string("connection"),
+        attempt(string("stop_area")),
+        attempt(string("stop_point")),
+        attempt(string("contributor")),
+        attempt(string("dataset")),
+        attempt(string("network")),
+        attempt(string("commercial_mode")),
+        attempt(string("line")),
+        attempt(string("route")),
+        attempt(string("vehicle_journey")),
+        attempt(string("physical_mode")),
+        attempt(string("company")),
+        attempt(string("connection")),
     )))
-    .map(|s| s.parse().unwrap())
+    .map(|s| Object::from_str(s).unwrap())
 }
 
 fn ident<I>() -> impl Parser<I, Output = String>
