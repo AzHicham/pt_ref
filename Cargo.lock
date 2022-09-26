@@ -523,7 +523,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe549115a674f5ec64c754d85e37d6f42664bd0ef4ffb62b619489ad99c6cb1a"
 dependencies = [
- "quick-xml 0.17.2",
+ "quick-xml",
 ]
 
 [[package]]
@@ -544,7 +544,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4805cb3bc36ac5a8e9da54798654983867648d4b2179bbcb62add917b148f51e"
 dependencies = [
  "minidom",
- "quick-xml 0.17.2",
+ "quick-xml",
  "thiserror",
 ]
 
@@ -743,15 +743,6 @@ name = "quick-xml"
 version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe1e430bdcf30c9fdc25053b9c459bb1a4672af4617b6c783d7d91dc17c6bbb0"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "quick-xml"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8533f14c8382aaad0d592c812ac3b826162128b65662331e1127b45c3d18536b"
 dependencies = [
  "memchr",
 ]
@@ -1166,9 +1157,9 @@ dependencies = [
 
 [[package]]
 name = "transit_model"
-version = "0.49.0"
+version = "0.51.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af70e2ad0220fd9e167be650cf38208739e2ff41f865b6c4effabae2b891bc7a"
+checksum = "3d1bab040a8d17058eccc8958520f85f573e1f2395fcd1c78fb05792eaba48dc"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1185,7 +1176,6 @@ dependencies = [
  "minidom_writer",
  "num-traits",
  "pretty_assertions",
- "quick-xml 0.22.0",
  "relational_types",
  "rust_decimal",
  "serde",
