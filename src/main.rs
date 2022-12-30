@@ -32,7 +32,7 @@ pub mod expr;
 fn main() {
     if let Err(err) = run(Opt::from_args()) {
         for cause in err.iter_chain() {
-            eprintln!("{}", cause);
+            eprintln!("{cause}");
         }
         std::process::exit(1);
     }
@@ -56,7 +56,7 @@ fn run(opt: Opt) -> Result<()> {
         let cmd = cmd?;
         match expr::parse(cmd.as_str()) {
             Ok(e) => dispatch!(model, e.object, |c| run_eval(&e.expr, c, &model))?,
-            Err(e) => writeln!(io::stderr(), "{}", e)?,
+            Err(e) => writeln!(io::stderr(), "{e}")?,
         }
         prompt()?;
     }
@@ -76,7 +76,7 @@ where
             Ok(set) => set,
             Err(e) => {
                 for cause in e.iter_chain() {
-                    writeln!(io::stderr(), "{}", cause)?;
+                    writeln!(io::stderr(), "{cause}")?;
                 }
                 write!(io::stderr(), "Expression not evaluated")?;
                 return Ok(());

@@ -109,7 +109,7 @@ impl ::std::fmt::Display for Fun {
         let args = self
             .args
             .iter()
-            .map(|a| format!("{:?}", a))
+            .map(|a| format!("{a:?}"))
             .collect::<Vec<_>>()
             .join(", ");
         write!(f, "{:?}.{}({})", self.obj, self.method, args)
