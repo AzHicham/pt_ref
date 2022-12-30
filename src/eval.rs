@@ -62,7 +62,7 @@ impl<'a, T> Eval<'a, T> {
             Empty => Ok(IdxSet::default()),
             Fun(f) => self
                 .fun(f)
-                .with_context(|_| format!("Error while evaluating {}", f))
+                .with_context(|_| format!("Error while evaluating {f}"))
                 .map_err(|e| e.into()),
         }
     }
