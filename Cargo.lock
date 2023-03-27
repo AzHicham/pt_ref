@@ -1202,9 +1202,9 @@ dependencies = [
 
 [[package]]
 name = "typed_index_collection"
-version = "2.2.0"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3755b437f2e60625aff6dd790dd7c350805c1e76be775dcf208482fab8574c72"
+checksum = "af74baed586e85fd9cc3aedb9a37bfac138319f78f5cfc000f171c7647b768be"
 dependencies = [
  "derivative 2.2.0",
  "serde",
